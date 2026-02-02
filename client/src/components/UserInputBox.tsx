@@ -35,10 +35,10 @@ export default function UserInputBox({ question, onSubmit, placeholder }: UserIn
   };
 
   return (
-    <div className="sticky bottom-0 left-0 right-0 p-3 md:p-6 bg-blue-900 border-2 md:border-4 border-blue-400 rounded-xl shadow-2xl">
+    <div className="p-3 md:p-6 bg-blue-900 border-2 md:border-4 border-blue-400 rounded-xl shadow-2xl">
       <div className="mb-2 md:mb-3">
         <h3 className="text-base md:text-lg font-bold text-blue-200 mb-1 md:mb-2">💬 AIからの質問</h3>
-        <div className="text-sm md:text-sm text-white bg-blue-800 p-2 md:p-4 rounded-lg whitespace-pre-wrap max-h-32 md:max-h-none overflow-y-auto">
+        <div className="text-sm md:text-sm text-white bg-blue-800 p-2 md:p-4 rounded-lg whitespace-pre-wrap">
           {question}
         </div>
       </div>
