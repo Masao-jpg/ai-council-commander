@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(tree:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"create-desktop-shortcut.ps1\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(npx tsc:*)",
+      "Bash(curl:*)",
+      "Bash(node -e \"require\\(''dotenv''\\).config\\(\\); console.log\\(''API Key:'', process.env.GEMINI_API_KEY ? ''Set \\('' + process.env.GEMINI_API_KEY.substring\\(0, 10\\) + ''...\\)'' : ''NOT SET''\\);\")",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(python -m json.tool:*)",
+      "Bash(npx cap init:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx cap add android)"
+    ]
+  }
+}
