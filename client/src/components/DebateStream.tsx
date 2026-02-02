@@ -375,7 +375,7 @@ export default function DebateStream({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-4">
+      <div className="flex-1 overflow-y-scroll p-3 md:p-6 space-y-3 md:space-y-4" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
         {messages.length === 0 && !isDebating && (
           <div className="text-center text-gray-500 mt-8 text-base md:text-sm px-4">
             議題を設定して評議会を開始してください
