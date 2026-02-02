@@ -75,6 +75,7 @@ export default function ImageUpload({ onImageUploaded }: ImageUploadProps) {
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileSelect}
         className="hidden"
       />
@@ -84,28 +85,28 @@ export default function ImageUpload({ onImageUploaded }: ImageUploadProps) {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 rounded-lg flex items-center gap-2 transition-colors text-sm"
+          className="px-4 py-3 md:px-3 md:py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 rounded-lg flex items-center gap-2 transition-colors text-base md:text-sm font-semibold shadow-md"
         >
-          <Image className="w-4 h-4" />
-          画像を追加
+          <Image className="w-5 h-5 md:w-4 md:h-4" />
+          📷 画像を追加
         </button>
       ) : (
         <div className="relative inline-block">
           <img
             src={preview}
             alt="Preview"
-            className="max-w-xs max-h-32 rounded-lg border-2 border-gray-600"
+            className="max-w-full md:max-w-xs max-h-48 md:max-h-32 rounded-lg border-2 border-gray-600"
           />
           <button
             type="button"
             onClick={handleRemove}
-            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1"
+            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-2 md:p-1 shadow-lg"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 md:w-4 md:h-4" />
           </button>
           {uploading && (
             <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-              <Upload className="w-6 h-6 animate-pulse" />
+              <Upload className="w-8 h-8 md:w-6 md:h-6 animate-pulse text-white" />
             </div>
           )}
         </div>
