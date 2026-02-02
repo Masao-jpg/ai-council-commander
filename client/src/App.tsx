@@ -107,24 +107,23 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col">
-      {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">
-            <span className="text-blue-400">AI Council</span> Commander
-            <span className="text-gray-500 text-sm ml-3">v3.1.0</span>
+      {/* Header - Mobile Optimized */}
+      <header className="bg-gray-800 border-b border-gray-700 px-3 py-3 md:px-6 md:py-4 flex-shrink-0">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h1 className="text-lg md:text-2xl font-bold">
+            <span className="text-blue-400">AI Council</span>
+            <span className="text-gray-500 text-xs md:text-sm ml-2">v3.1.0</span>
           </h1>
 
-          {/* Phase Indicator */}
+          {/* Phase Indicator - Mobile Compact */}
           {debateState.isDebating && (
-            <div className="flex items-center gap-4 text-sm">
-              <div className="bg-gray-700 px-4 py-2 rounded-lg">
-                <span className="text-gray-400">Phase {debateState.currentPhase}:</span>
-                <span className="text-white ml-2 font-semibold">{debateState.currentPhaseName}</span>
+            <div className="flex items-center gap-2 text-xs md:text-sm">
+              <div className="bg-gray-700 px-2 py-1 md:px-4 md:py-2 rounded">
+                <span className="text-gray-400">P{debateState.currentPhase}</span>
+                <span className="text-white ml-1 font-semibold hidden md:inline">{debateState.currentPhaseName}</span>
               </div>
-              <div className="bg-gray-700 px-4 py-2 rounded-lg">
-                <span className="text-gray-400">Turn:</span>
-                <span className="text-white ml-2 font-semibold">
+              <div className="bg-gray-700 px-2 py-1 md:px-4 md:py-2 rounded">
+                <span className="text-white font-semibold">
                   {debateState.currentTurn}/{debateState.totalTurnsInPhase}
                 </span>
               </div>
@@ -133,10 +132,10 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Side: Settings + Debate */}
-        <div className="w-1/2 flex flex-col border-r border-gray-700">
+      {/* Main Content - Mobile: Single Column, Desktop: Two Columns */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Settings + Debate - Full width on mobile */}
+        <div className="w-full md:w-1/2 flex flex-col md:border-r border-gray-700">
           {/* Council Settings - Fixed small height */}
           <div className="border-b border-gray-700 flex-shrink-0">
             <CouncilSettings
@@ -170,19 +169,21 @@ function App() {
           </div>
         </div>
 
-        {/* Right Side: Artifact */}
-        <div className="w-1/2 flex flex-col">
+        {/* Right Side: Artifact - Hidden on mobile */}
+        <div className="hidden md:flex md:w-1/2 flex-col">
           <ArtifactPanel plan={debateState.currentPlan} />
         </div>
       </div>
 
-      {/* Action Bar */}
-      <ActionBar
-        plan={debateState.currentPlan}
-        theme={debateState.theme}
-        outputMode={debateState.outputMode}
-        isDebating={debateState.isDebating}
-      />
+      {/* Action Bar - Hidden on mobile */}
+      <div className="hidden md:block">
+        <ActionBar
+          plan={debateState.currentPlan}
+          theme={debateState.theme}
+          outputMode={debateState.outputMode}
+          isDebating={debateState.isDebating}
+        />
+      </div>
     </div>
   );
 }

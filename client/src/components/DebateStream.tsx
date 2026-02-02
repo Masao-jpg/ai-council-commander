@@ -375,27 +375,27 @@ export default function DebateStream({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-4">
         {messages.length === 0 && !isDebating && (
-          <div className="text-center text-gray-500 mt-8">
+          <div className="text-center text-gray-500 mt-8 text-base md:text-sm px-4">
             議題を設定して評議会を開始してください
           </div>
         )}
 
         {messages.map((message, index) => (
-          <div key={index} className="flex gap-3">
-            <div className={`w-2 rounded-full ${getAgentColor(message.agent)}`} />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{AGENT_INFO[message.agent].emoji}</span>
-                <span className="font-semibold text-sm">
+          <div key={index} className="flex gap-2 md:gap-3">
+            <div className={`w-1 md:w-2 rounded-full ${getAgentColor(message.agent)}`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-2xl md:text-lg">{AGENT_INFO[message.agent].emoji}</span>
+                <span className="font-semibold text-base md:text-sm">
                   {AGENT_INFO[message.agent].name}
                 </span>
                 <span className="text-xs text-gray-500">
                   {message.timestamp.toLocaleTimeString()}
                 </span>
               </div>
-              <div className="text-sm text-gray-300 whitespace-pre-wrap">
+              <div className="text-base md:text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
                 {message.content}
               </div>
               {message.imageUrl && (
@@ -403,7 +403,7 @@ export default function DebateStream({
                   <img
                     src={message.imageUrl}
                     alt="Uploaded image"
-                    className="max-w-md rounded-lg border border-gray-600"
+                    className="max-w-full md:max-w-md rounded-lg border border-gray-600"
                   />
                 </div>
               )}
