@@ -236,7 +236,7 @@ router.post('/next-turn', async (req, res) => {
       await new Promise(resolve => setTimeout(resolve, 500)); // 遅延をシミュレート
     } else {
       // 実際のGemini API呼び出し
-      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
 
       // コンテキスト構築
       let contextPrompt = `${agentConfig.systemPrompt}\n\n`;
