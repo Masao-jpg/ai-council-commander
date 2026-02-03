@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { PlayCircle, Settings } from 'lucide-react';
+import type { CouncilMode } from '../types';
+import { MODE_INFO } from '../types';
 
 interface CouncilSettingsProps {
-  onStartDebate: (theme: string, outputMode: 'implementation' | 'documentation') => void;
+  onStartDebate: (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation') => void;
   isDebating: boolean;
 }
 
 export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSettingsProps) {
   const [theme, setTheme] = useState('');
+  const [mode, setMode] = useState<CouncilMode>('brainstorm');
   const [outputMode, setOutputMode] = useState<'implementation' | 'documentation'>('implementation');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (theme.trim()) {
-      onStartDebate(theme, outputMode);
+      onStartDebate(theme, mode, outputMode);
     }
   };
 
@@ -25,6 +28,36 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3 md:space-y-3">
+        {/* Mode Selection */}
+        <div>
+          <label className="block text-sm md:text-xs font-medium mb-2 text-gray-300">
+            モード選択
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(MODE_INFO) as CouncilMode[]).map((m) => (
+              <label
+                key={m}
+                className={`flex flex-col p-3 md:p-2 border-2 rounded-lg cursor-pointer transition-all ${
+                  mode === m
+                    ? 'border-blue-500 bg-blue-500 bg-opacity-10'
+                    : 'border-gray-600 hover:border-gray-500'
+                } ${isDebating ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <input
+                  type="radio"
+                  value={m}
+                  checked={mode === m}
+                  onChange={(e) => setMode(e.target.value as CouncilMode)}
+                  className="hidden"
+                  disabled={isDebating}
+                />
+                <span className="text-sm md:text-xs font-semibold mb-1">{MODE_INFO[m].nameJa}</span>
+                <span className="text-xs text-gray-400">{MODE_INFO[m].description}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         {/* Theme Input - Larger on mobile */}
         <div>
           <label className="block text-sm md:text-xs font-medium mb-2 text-gray-300">

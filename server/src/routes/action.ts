@@ -88,6 +88,41 @@ router.post('/export', async (req, res) => {
   }
 });
 
+// Export memo
+router.post('/export-memo', async (req, res) => {
+  try {
+    const { memo, theme, format = 'md' } = req.body;
+
+    if (!memo) {
+      return res.status(400).json({ error: 'Memo is required' });
+    }
+
+    // Create exports directory
+    const exportsDir = path.join(process.cwd(), 'exports');
+    await fs.mkdir(exportsDir, { recursive: true });
+
+    // Generate filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeName = theme.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    const filename = `${safeName}_MEMO_${timestamp}.${format}`;
+    const filepath = path.join(exportsDir, filename);
+
+    // Write file
+    await fs.writeFile(filepath, memo, 'utf-8');
+
+    res.json({
+      success: true,
+      message: 'Memo exported successfully',
+      filename,
+      filepath,
+      size: memo.length
+    });
+  } catch (error: any) {
+    console.error('Error exporting memo:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get list of exported documents
 router.get('/exports', async (req, res) => {
   try {

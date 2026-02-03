@@ -17,12 +17,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 interface DebateSession {
   sessionId: string;
   theme: string;
+  mode: string;
   outputMode: 'implementation' | 'documentation';
   currentPhase: number;
   currentTurn: number;
   speakerDeck: AgentRole[];
   history: Array<{ agent: AgentRole; content: string }>;
   currentPlan: string;
+  currentMemo: string;
+  extensionCount: number;
 }
 
 const debateSessions = new Map<string, DebateSession>();
@@ -54,12 +57,30 @@ function generateMockResponse(agent: AgentRole, session: DebateSession, phase: P
       `これまでの議論を整理します。Visionaryからは理想像が、Analystからはデータに基づく分析が、Realistからは実現可能な計画が提示されました。`,
       `合意点として、段階的なアプローチを採用し、リスク対策を講じながら進めることが確認されました。`,
       generateModeratorPlanUpdate(session, phase)
+    ],
+    secretary: [
+      generateSecretaryMemo(session)
     ]
   };
 
   const agentResponses = responses[agent];
   const randomIndex = Math.floor(Math.random() * agentResponses.length);
   return agentResponses[randomIndex];
+}
+
+// 議事メモ係用のメモを生成
+function generateSecretaryMemo(session: DebateSession): string {
+  const recentMessages = session.history.slice(-3);
+  let memo = '---MEMO_UPDATE---\n';
+
+  recentMessages.forEach((msg) => {
+    const config = AGENT_CONFIGS[msg.agent];
+    memo += `## ${config.name} の発言要約\n`;
+    memo += `- **要点**: ${msg.content.substring(0, 100)}...\n`;
+  });
+
+  memo += '---MEMO_UPDATE---';
+  return memo;
 }
 
 // モデレーター用の計画書更新を生成
@@ -149,7 +170,7 @@ function createSpeakerDeck(phase: PhaseConfig, forceAnalystFirst: boolean = fals
 // セッション初期化
 router.post('/start', async (req, res) => {
   try {
-    const { sessionId, theme, outputMode } = req.body;
+    const { sessionId, theme, mode, outputMode } = req.body;
 
     if (!theme) {
       return res.status(400).json({ error: 'Theme is required' });
@@ -162,12 +183,15 @@ router.post('/start', async (req, res) => {
     const session: DebateSession = {
       sessionId,
       theme,
+      mode: mode || 'brainstorm',
       outputMode,
       currentPhase: 1,
       currentTurn: 0,
       speakerDeck,
       history: [],
-      currentPlan: `# ${theme}\n\n議論を開始します...`
+      currentPlan: `# ${theme}\n\n議論を開始します...`,
+      currentMemo: `# 議事メモ\n\n## セッション開始\n- 議題: ${theme}\n- モード: ${mode || 'brainstorm'}\n`,
+      extensionCount: 0
     };
 
     debateSessions.set(sessionId, session);
@@ -331,6 +355,18 @@ router.post('/next-turn', async (req, res) => {
       }
     }
 
+    // 議事メモの更新をチェック
+    let memoUpdate = null;
+    if (nextAgent === 'secretary') {
+      const memoMatch = text.match(/---MEMO_UPDATE---([\s\S]*?)---MEMO_UPDATE---/);
+      if (memoMatch) {
+        const newMemo = memoMatch[1].trim();
+        // 既存のメモに追加
+        session.currentMemo += '\n\n' + newMemo;
+        memoUpdate = newMemo;
+      }
+    }
+
     // チェックポイント判定
     const totalTurnsSoFar = DEBATE_PHASES
       .slice(0, session.currentPhase)
@@ -346,6 +382,7 @@ router.post('/next-turn', async (req, res) => {
       agent: nextAgent,
       content: text,
       planUpdate,
+      memoUpdate,
       turn: session.currentTurn,
       phase: session.currentPhase,
       phaseName: currentPhase.nameJa,
@@ -396,6 +433,53 @@ router.post('/next-phase', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Error transitioning phase:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 議論を延長する
+router.post('/extend-discussion', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    const session = debateSessions.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const currentPhase = DEBATE_PHASES[session.currentPhase - 1];
+
+    // 延長カウントを増やす
+    session.extensionCount++;
+
+    // 各エージェント1回ずつ追加のデッキを作成（議事メモ係も含む）
+    const extensionDeck: AgentRole[] = [];
+    Object.entries(currentPhase.turnQuotas).forEach(([agent, count]) => {
+      if (count > 0) {
+        extensionDeck.push(agent as AgentRole);
+      }
+    });
+
+    // デッキをシャッフル
+    for (let i = extensionDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [extensionDeck[i], extensionDeck[j]] = [extensionDeck[j], extensionDeck[i]];
+    }
+
+    // 既存のデッキに追加
+    session.speakerDeck = [...session.speakerDeck, ...extensionDeck];
+
+    console.log(`🔄 Discussion extended! Added ${extensionDeck.length} more turns. Extension count: ${session.extensionCount}`);
+
+    res.json({
+      success: true,
+      message: `議論を延長しました（延長回数: ${session.extensionCount}）`,
+      extensionCount: session.extensionCount,
+      addedTurns: extensionDeck.length,
+      remainingInDeck: session.speakerDeck.length
+    });
+  } catch (error: any) {
+    console.error('Error extending discussion:', error);
     res.status(500).json({ error: error.message });
   }
 });

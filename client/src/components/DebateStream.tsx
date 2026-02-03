@@ -9,6 +9,7 @@ import { getApiUrl } from '../config';
 interface DebateStreamProps {
   messages: Message[];
   theme: string;
+  mode: string;
   outputMode: string;
   sessionId: string;
   isDebating: boolean;
@@ -21,6 +22,7 @@ interface DebateStreamProps {
   onMessage: (message: Message) => void;
   onUserResponse: (question: string, answer: string) => void;
   onPlanUpdate: (plan: string) => void;
+  onMemoUpdate: (memo: string) => void;
   onPhaseInfoUpdate: (phase: number, phaseName: string, turn: number, totalTurns: number) => void;
   onWaitingForPhaseTransition: (waiting: boolean) => void;
   onPhaseInstruction: (phase: number, instruction: string) => void;
@@ -30,6 +32,7 @@ interface DebateStreamProps {
 export default function DebateStream({
   messages,
   theme,
+  mode,
   outputMode,
   sessionId,
   isDebating,
@@ -42,6 +45,7 @@ export default function DebateStream({
   onMessage,
   onUserResponse,
   onPlanUpdate,
+  onMemoUpdate,
   onPhaseInfoUpdate,
   onWaitingForPhaseTransition,
   onPhaseInstruction,
@@ -81,6 +85,7 @@ export default function DebateStream({
         body: JSON.stringify({
           sessionId,
           theme,
+          mode,
           outputMode,
         }),
       });
@@ -199,6 +204,11 @@ export default function DebateStream({
         onPlanUpdate(data.planUpdate);
       }
 
+      // Update memo if provided
+      if (data.memoUpdate) {
+        onMemoUpdate(data.memoUpdate);
+      }
+
       // Update phase info
       onPhaseInfoUpdate(
         data.phase,
@@ -217,7 +227,7 @@ export default function DebateStream({
         onWaitingForPhaseTransition(true);
 
         // Set next phase name
-        const phaseNames = ['定義・目標設定', '分析・要因究明', '対策立案・計画', '最終確認・計画策定'];
+        const phaseNames = ['ヒアリング（現状把握）', '目標・成果物定義', '成果物作成', 'ブラッシュアップ'];
         if (data.nextPhaseAvailable) {
           setNextPhaseName(phaseNames[data.phase]);
         }
@@ -294,6 +304,34 @@ export default function DebateStream({
     await handleContinueToNextPhase();
   };
 
+  const handleExtendDiscussion = async () => {
+    console.log('🔄 User requested discussion extension');
+
+    try {
+      const response = await fetch(getApiUrl('/api/debate/extend-discussion'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`✅ Discussion extended! Added ${data.addedTurns} turns.`);
+
+        // Reset phase transition flag and continue debate
+        onWaitingForPhaseTransition(false);
+
+        // Continue debate with extended turns
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await runNextTurn();
+      }
+    } catch (error) {
+      console.error('❌ Error extending discussion:', error);
+      alert(`議論延長エラー: ${error}`);
+    }
+  };
+
   const handleContinueToNextPhase = async () => {
     console.log('🚀 User clicked "Continue to Next Phase" button');
     console.log('Current state:', { isDebating, isWaitingForPhaseTransition, currentPhase });
@@ -352,6 +390,7 @@ export default function DebateStream({
       realist: 'bg-orange-500',
       guardian: 'bg-red-500',
       moderator: 'bg-green-500',
+      secretary: 'bg-purple-500',
     };
     return colors[agent];
   };
@@ -450,6 +489,7 @@ export default function DebateStream({
             currentPhase={currentPhase}
             nextPhaseName={nextPhaseName}
             onContinue={handlePhaseTransition}
+            onExtend={handleExtendDiscussion}
           />
         )}
 

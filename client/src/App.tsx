@@ -9,9 +9,11 @@ function App() {
   const [debateState, setDebateState] = useState<DebateState>({
     sessionId: '',
     theme: '',
+    mode: 'brainstorm',
     outputMode: 'implementation',
     messages: [],
     currentPlan: '# AI Council Commander\n\n議論を開始すると、ここに計画が表示されます。',
+    currentMemo: '# 議事メモ\n\n議論を開始すると、ここに議事メモが表示されます。',
     isDebating: false,
     currentPhase: 0,
     currentPhaseName: '',
@@ -22,26 +24,30 @@ function App() {
     currentUserQuestion: '',
     userResponses: [],
     userPhaseInstructions: {},
+    extensionCount: 0,
   });
 
-  const handleStartDebate = (theme: string, outputMode: 'implementation' | 'documentation') => {
+  const handleStartDebate = (theme: string, mode: 'brainstorm' | 'requirements' | 'implementation' | 'review', outputMode: 'implementation' | 'documentation') => {
     const sessionId = `session_${Date.now()}`;
     setDebateState({
       sessionId,
       theme,
+      mode,
       outputMode,
       messages: [],
       currentPlan: '# ' + theme + '\n\n議論を準備中...',
+      currentMemo: '# 議事メモ\n\n議論を準備中...',
       isDebating: true,
       currentPhase: 1,
-      currentPhaseName: '定義・目標設定',
+      currentPhaseName: 'ヒアリング（現状把握）',
       currentTurn: 0,
-      totalTurnsInPhase: 8,
+      totalTurnsInPhase: 11,
       isWaitingForPhaseTransition: false,
       isWaitingForUserResponse: false,
       currentUserQuestion: '',
       userResponses: [],
       userPhaseInstructions: {},
+      extensionCount: 0,
     });
   };
 
@@ -77,6 +83,13 @@ function App() {
     setDebateState(prev => ({
       ...prev,
       currentPlan: plan,
+    }));
+  };
+
+  const updateMemo = (memo: string) => {
+    setDebateState(prev => ({
+      ...prev,
+      currentMemo: prev.currentMemo + '\n\n' + memo,
     }));
   };
 
@@ -149,6 +162,7 @@ function App() {
             <DebateStream
               messages={debateState.messages}
               theme={debateState.theme}
+              mode={debateState.mode}
               outputMode={debateState.outputMode}
               sessionId={debateState.sessionId}
               isDebating={debateState.isDebating}
@@ -161,6 +175,7 @@ function App() {
               onMessage={addMessage}
               onUserResponse={addUserResponse}
               onPlanUpdate={updatePlan}
+              onMemoUpdate={updateMemo}
               onPhaseInfoUpdate={updatePhaseInfo}
               onWaitingForPhaseTransition={setWaitingForPhaseTransition}
               onPhaseInstruction={setPhaseInstruction}
@@ -179,6 +194,7 @@ function App() {
       <div className="hidden md:block">
         <ActionBar
           plan={debateState.currentPlan}
+          memo={debateState.currentMemo}
           theme={debateState.theme}
           outputMode={debateState.outputMode}
           isDebating={debateState.isDebating}

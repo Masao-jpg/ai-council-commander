@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Play, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { Play, Download, CheckCircle, AlertCircle, FileText } from 'lucide-react';
 
 interface ActionBarProps {
   plan: string;
+  memo: string;
   theme: string;
   outputMode: 'implementation' | 'documentation';
   isDebating: boolean;
 }
 
-export default function ActionBar({ plan, theme, outputMode, isDebating }: ActionBarProps) {
+export default function ActionBar({ plan, memo, theme, outputMode, isDebating }: ActionBarProps) {
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -78,6 +79,39 @@ export default function ActionBar({ plan, theme, outputMode, isDebating }: Actio
     }
   };
 
+  const handleExportMemo = async () => {
+    if (isDebating) {
+      setResult({ type: 'error', message: '議論が終了するまでお待ちください' });
+      return;
+    }
+
+    setIsExecuting(true);
+    setResult(null);
+
+    try {
+      const response = await fetch('/api/action/export-memo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memo, theme, format: 'md' }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResult({
+          type: 'success',
+          message: `議事メモを保存しました: ${data.filename}`,
+        });
+      } else {
+        setResult({ type: 'error', message: data.error || 'エラーが発生しました' });
+      }
+    } catch (error) {
+      setResult({ type: 'error', message: '通信エラーが発生しました' });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   return (
     <div className="bg-gray-800 border-t border-gray-700 px-6 py-4">
       <div className="flex items-center gap-4">
@@ -101,6 +135,15 @@ export default function ActionBar({ plan, theme, outputMode, isDebating }: Actio
           >
             <Download className="w-4 h-4" />
             Export Doc
+          </button>
+
+          <button
+            onClick={handleExportMemo}
+            disabled={isDebating || isExecuting}
+            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold flex items-center gap-2 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Export Memo
           </button>
         </div>
 

@@ -1,18 +1,23 @@
 import { useState } from 'react';
-import { ChevronRight, Edit3 } from 'lucide-react';
+import { ChevronRight, Edit3, Plus } from 'lucide-react';
 
 interface PhaseInstructionBoxProps {
   currentPhase: number;
   nextPhaseName: string;
   onContinue: (instruction: string) => void;
+  onExtend: () => void;
 }
 
-export default function PhaseInstructionBox({ currentPhase, nextPhaseName, onContinue }: PhaseInstructionBoxProps) {
+export default function PhaseInstructionBox({ currentPhase, nextPhaseName, onContinue, onExtend }: PhaseInstructionBoxProps) {
   const [instruction, setInstruction] = useState('');
   const [showInput, setShowInput] = useState(false);
 
   const handleContinue = () => {
     onContinue(instruction);
+  };
+
+  const handleExtend = () => {
+    onExtend();
   };
 
   return (
@@ -51,6 +56,15 @@ export default function PhaseInstructionBox({ currentPhase, nextPhaseName, onCon
           />
         )}
       </div>
+
+      {/* 議論延長ボタン */}
+      <button
+        onClick={handleExtend}
+        className="w-full mb-3 py-4 md:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-base md:text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+      >
+        <Plus className="w-5 h-5 md:w-4 md:h-4" />
+        議論を延長する（各エージェント1回ずつ追加）
+      </button>
 
       {/* 次へ進むボタン */}
       {currentPhase < 4 ? (
