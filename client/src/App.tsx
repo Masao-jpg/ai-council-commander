@@ -135,7 +135,7 @@ function App() {
       {/* Main Content - Mobile: Single Column, Desktop: Two Columns */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Settings + Debate - Full width on mobile */}
-        <div className="w-full md:w-1/2 flex flex-col md:border-r border-gray-700">
+        <div className="w-full md:w-1/2 h-full flex flex-col md:border-r border-gray-700">
           {/* Council Settings - Fixed small height */}
           <div className="border-b border-gray-700 flex-shrink-0">
             <CouncilSettings
@@ -145,7 +145,7 @@ function App() {
           </div>
 
           {/* Debate Stream - Takes remaining space */}
-          <div className="flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 h-0">
             <DebateStream
               messages={debateState.messages}
               theme={debateState.theme}

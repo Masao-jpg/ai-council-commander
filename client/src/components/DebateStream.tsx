@@ -357,8 +357,8 @@ export default function DebateStream({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
-      <div className="border-b border-gray-700 px-6 py-3 flex items-center gap-2">
+    <div className="h-full w-full flex flex-col bg-gray-900">
+      <div className="border-b border-gray-700 px-3 md:px-6 py-3 flex items-center gap-2 flex-shrink-0">
         <MessageSquare className="w-5 h-5 text-green-400" />
         <h2 className="text-lg font-semibold">Debate Stream</h2>
         {isDebating && !isWaitingForPhaseTransition && (
@@ -375,7 +375,13 @@ export default function DebateStream({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-scroll p-3 md:p-6 space-y-3 md:space-y-4" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+      <div
+        className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-4"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain'
+        }}
+      >
         {messages.length === 0 && !isDebating && (
           <div className="text-center text-gray-500 mt-8 text-base md:text-sm px-4">
             議題を設定して評議会を開始してください
