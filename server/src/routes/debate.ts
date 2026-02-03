@@ -267,8 +267,8 @@ router.post('/next-turn', async (req, res) => {
       // コンテキスト構築
       let contextPrompt = `${agentConfig.systemPrompt}\n\n`;
 
-      // モード別の追加指示を追加
-      const modeInstruction = getModeSpecificInstruction(session.mode as CouncilMode);
+      // モード別の追加指示を追加（フェーズも渡す）
+      const modeInstruction = getModeSpecificInstruction(session.mode as CouncilMode, session.currentPhase);
       contextPrompt += modeInstruction + '\n\n';
 
       contextPrompt += `【議題】${session.theme}\n`;
@@ -299,49 +299,67 @@ router.post('/next-turn', async (req, res) => {
       }
 
       // Analystがフェーズ開始時（Turn 1）の場合、質問を促す
-      if (nextAgent === 'analyst' && session.currentTurn === 1) {
-        contextPrompt += `\n【🔴 絶対必須の指示 🔴】\n`;
-        contextPrompt += `これはフェーズの最初のターンです。\n`;
-        contextPrompt += `あなたは**必ず**以下のルールに従ってユーザーに質問してください：\n\n`;
+      if (nextAgent === 'analyst' && session.currentPhase === 1) {
+        contextPrompt += `\n【🔴 Phase 1: ヒアリング - 絶対必須の指示 🔴】\n`;
+        contextPrompt += `あなた（Analyst）は、このフェーズで根掘り葉掘りユーザーに質問します。\n`;
+        contextPrompt += `毎回、必ず以下のルールに従ってユーザーに質問してください：\n\n`;
         contextPrompt += `1. 出力は必ず "---USER_QUESTION---" で開始し、"---USER_QUESTION---" で終了すること\n`;
         contextPrompt += `2. マーカーの前後に説明文を書かないこと\n`;
-        contextPrompt += `3. マーカーの中に【確認事項】として質問を記載すること\n\n`;
+        contextPrompt += `3. マーカーの中に質問を記載すること\n\n`;
+
+        // ターン数に応じた質問の深さを指示
+        if (session.currentTurn === 1) {
+          contextPrompt += `【Turn 1: 最初の質問】\n`;
+          contextPrompt += `まずは基本的な情報（目的、現状、制約条件など）を聞いてください。\n\n`;
+        } else if (session.currentTurn <= 3) {
+          contextPrompt += `【Turn ${session.currentTurn}: 掘り下げ質問】\n`;
+          contextPrompt += `前回の回答を基に、より詳細な情報を聞いてください。\n`;
+          contextPrompt += `曖昧な点、具体性が欠けている点を明確にしましょう。\n\n`;
+        } else {
+          contextPrompt += `【Turn ${session.currentTurn}: 最終確認】\n`;
+          contextPrompt += `これまでの情報で不足している点や、確認したい点を聞いてください。\n`;
+          contextPrompt += `次のフェーズで成果物を定義するために必要な情報が揃っているか確認しましょう。\n\n`;
+        }
 
         // モード別の質問例を提供
         if (session.mode === 'review') {
-          contextPrompt += `【reviewモード専用の質問例】\n`;
-          contextPrompt += `---USER_QUESTION---\n`;
-          contextPrompt += `【レビュー対象の確認】\n\n`;
-          contextPrompt += `このモードは「既存成果物のレビュー」を目的としています。\n\n`;
-          contextPrompt += `1. **レビュー対象の成果物**\n`;
-          contextPrompt += `   レビューしたい成果物を共有してください：\n`;
-          contextPrompt += `   - ソースコード（ファイル、GitHubリンクなど）\n`;
-          contextPrompt += `   - ドキュメント（内容を貼り付け）\n`;
-          contextPrompt += `   - 設計書、仕様書\n`;
-          contextPrompt += `   - その他の成果物\n\n`;
-          contextPrompt += `2. **レビューの観点**\n`;
-          contextPrompt += `   特に重視してほしい点：\n`;
-          contextPrompt += `   A) セキュリティ・安全性\n`;
-          contextPrompt += `   B) パフォーマンス・効率性\n`;
-          contextPrompt += `   C) 保守性・可読性\n`;
-          contextPrompt += `   D) すべて網羅的に\n\n`;
-          contextPrompt += `3. **期待するアウトプット**\n`;
-          contextPrompt += `   A) 問題点の指摘のみ\n`;
-          contextPrompt += `   B) 具体的な修正案も含む\n`;
-          contextPrompt += `   C) テスト結果報告も含む\n\n`;
-          contextPrompt += `レビュー対象の成果物を共有してください。\n`;
-          contextPrompt += `---USER_QUESTION---\n\n`;
-        } else {
-          contextPrompt += `【標準の質問例】\n`;
-          contextPrompt += `---USER_QUESTION---\n`;
-          contextPrompt += `【確認事項】\n\n`;
-          contextPrompt += `1. **目標・目的**: 何を達成したいですか？\n`;
-          contextPrompt += `2. **現状**: 現在の状況や課題は？\n`;
-          contextPrompt += `3. **制約条件**: 予算、期限、利用可能なリソースは？\n`;
-          contextPrompt += `4. **期待する成果物**: どのような形式のアウトプットが必要ですか？\n`;
-          contextPrompt += `5. **その他**: 特に重視したい点や懸念事項は？\n\n`;
-          contextPrompt += `教えてください。\n`;
-          contextPrompt += `---USER_QUESTION---\n\n`;
+          contextPrompt += `【reviewモード専用 - 質問例】\n`;
+          if (session.currentTurn === 1) {
+            contextPrompt += `---USER_QUESTION---\n`;
+            contextPrompt += `【レビュー対象の確認】\n\n`;
+            contextPrompt += `このモードは「既存成果物のレビュー」を目的としています。\n\n`;
+            contextPrompt += `1. **レビュー対象の成果物**\n`;
+            contextPrompt += `   レビューしたい成果物を共有してください：\n`;
+            contextPrompt += `   - ソースコード（ファイル、リンクなど）\n`;
+            contextPrompt += `   - ドキュメント（内容を貼り付け）\n`;
+            contextPrompt += `   - 設計書、仕様書\n`;
+            contextPrompt += `   - その他の成果物\n\n`;
+            contextPrompt += `2. **レビューの観点**\n`;
+            contextPrompt += `   特に重視してほしい点：\n`;
+            contextPrompt += `   A) セキュリティ・安全性\n`;
+            contextPrompt += `   B) パフォーマンス・効率性\n`;
+            contextPrompt += `   C) 保守性・可読性\n`;
+            contextPrompt += `   D) すべて網羅的に\n\n`;
+            contextPrompt += `教えてください。\n`;
+            contextPrompt += `---USER_QUESTION---\n\n`;
+          } else {
+            contextPrompt += `成果物の背景、使用技術、既知の問題点などを掘り下げて聞いてください。\n\n`;
+          }
+        } else if (session.mode === 'brainstorm') {
+          contextPrompt += `【brainstormモード - 質問の方針】\n`;
+          contextPrompt += `- 「何をしたいか」「なぜやるか」に焦点を当てる\n`;
+          contextPrompt += `- 具体的な実装方法は聞かず、アイデアの本質を理解する\n`;
+          contextPrompt += `- 制約条件よりも、理想や目的を優先して聞く\n\n`;
+        } else if (session.mode === 'requirements') {
+          contextPrompt += `【requirementsモード - 質問の方針】\n`;
+          contextPrompt += `- 機能要件（何ができるべきか）を詳細に聞く\n`;
+          contextPrompt += `- 非機能要件（性能、品質、制約）を明確にする\n`;
+          contextPrompt += `- 優先順位や段階的な実現可能性を確認する\n\n`;
+        } else if (session.mode === 'implementation') {
+          contextPrompt += `【implementationモード - 質問の方針】\n`;
+          contextPrompt += `- 使用する技術スタック、ツールを確認する\n`;
+          contextPrompt += `- 既存のリソース（コード、ライブラリ、環境）を聞く\n`;
+          contextPrompt += `- 具体的な制約条件（環境、バージョンなど）を明確にする\n\n`;
         }
 
         contextPrompt += `※マーカーの外に文章を書くと、システムが質問を検出できなくなります。必ずマーカーで囲んでください。\n`;

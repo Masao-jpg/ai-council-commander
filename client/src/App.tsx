@@ -41,7 +41,7 @@ function App() {
       currentPhase: 1,
       currentPhaseName: 'ヒアリング（現状把握）',
       currentTurn: 0,
-      totalTurnsInPhase: 11,
+      totalTurnsInPhase: 6,
       isWaitingForPhaseTransition: false,
       isWaitingForUserResponse: false,
       currentUserQuestion: '',
