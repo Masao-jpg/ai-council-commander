@@ -75,25 +75,42 @@ export function getModeSpecificInstruction(mode: CouncilMode, phase: number): st
     case 1: // ヒアリング - Analystのみ
       instruction += `【Phase 1: ヒアリング】\n`;
       instruction += `このフェーズでは、Analystが根掘り葉掘りユーザーに質問します。\n`;
-      instruction += `あなた（Analyst）は、このモードの目的を達成するために必要な情報を徹底的に収集してください。\n\n`;
+      instruction += `あなた（Analyst）は、このモードの目的を達成するために必要な情報を徹底的に収集してください。\n`;
+      instruction += `※個人利用か企業利用かは聞かないでください。制約条件として予算・期限を聞けば十分です。\n\n`;
       break;
 
     case 2: // 目標・成果物定義
       instruction += `【Phase 2: 目標・成果物定義】\n`;
-      instruction += `Phase 1で収集した情報を基に、このセッションで何を作成するか（ゴール）を明確にします。\n`;
-      instruction += `各エージェントは、このモードの目的に沿って、成果物の形式・内容を議論してください。\n\n`;
+      instruction += `Phase 1で収集した情報を基に、**成果物のテンプレート・構造を明確に合意**します。\n\n`;
+      instruction += `【重要】Moderatorへ: このフェーズの最後に、必ず以下を含む計画書を作成してください：\n`;
+      instruction += `1. **成果物のテンプレート**: 見出し構成、セクション構造を明示\n`;
+      instruction += `2. **各セクションの目的**: 何を記載するかを明確に\n`;
+      instruction += `3. **成果物の完成イメージ**: 具体例を示す\n\n`;
+      instruction += `各エージェントは、テンプレートの妥当性、過不足を議論してください。\n\n`;
       break;
 
     case 3: // 成果物作成
+      const creationAgent = getCreationAgent(mode);
+      const creationAgentName = AGENT_CONFIGS[creationAgent].name;
       instruction += `【Phase 3: 成果物作成】\n`;
-      instruction += `合意したゴールに向けて、具体的な成果物のドラフトを作成します。\n`;
-      instruction += `各エージェントは、このモードの役割に従って、成果物の内容を提案・議論してください。\n\n`;
+      instruction += `このフェーズでは、**${creationAgentName}が単独で集中して**成果物を作成します。\n`;
+      instruction += `他のエージェントは発言せず、${creationAgentName}に任せてください。\n\n`;
+      instruction += `【${creationAgentName}への指示】\n`;
+      instruction += `- Phase 2で合意したテンプレートに従って作成してください\n`;
+      instruction += `- 各セクションを丁寧に埋めていってください\n`;
+      instruction += `- 完成度の高いドラフトを目指してください\n`;
+      instruction += `- 7回の発言で完成させるペース配分を考えてください\n\n`;
       break;
 
     case 4: // ブラッシュアップ
       instruction += `【Phase 4: ブラッシュアップ】\n`;
-      instruction += `ユーザーのフィードバックを踏まえて、成果物を精査・完成させます。\n`;
-      instruction += `各エージェントは、品質向上のための改善案を提示してください。\n\n`;
+      instruction += `Phase 3で作成された成果物を、全エージェントで協力してブラッシュアップします。\n`;
+      instruction += `各エージェントは、自分の専門性に基づいて改善案を提示してください：\n`;
+      instruction += `- Visionary: 目的適合性、価値\n`;
+      instruction += `- Analyst: 正確性、論理性\n`;
+      instruction += `- Realist: 実現可能性、効率性\n`;
+      instruction += `- Guardian: 安全性、リスク対策\n`;
+      instruction += `- Moderator: 全体の整合性、完成度\n\n`;
       break;
   }
 
@@ -252,13 +269,9 @@ export const AGENT_CONFIGS: Record<AgentRole, AgentConfig> = {
 【重要原則】
 - **仮定 → 確認 → 進める**: 仮定したまま勝手に議論を進めない
 - **特にユーザーの立場・状況・権限は絶対に推測で進めない**
-- **個人利用の場合は予算を緩く想定**: 無料〜低コストを優先、細かい予算は聞かない
 - **「○○だと仮定しますが、確認させてください」スタイル**
 
 【行動指針】
-- **【Phase 1】必ず確認**: 利用形態（個人 or 企業）、成果物の形式（テンプレート提示）
-- **【Phase 1以降】個人利用の場合、予算の詳細は聞かない**: 「無料〜低コストで」という前提で進める
-- **【各Phase】企業利用の場合のみ、予算・期限などを確認**
 - データと事実に基づいた分析を行う
 - **不明な前提条件は、業界標準から仮定を提示 → 必ず確認を取る**
 - **確認が取れていない仮定を前提にした議論はしない**
@@ -285,37 +298,6 @@ B) 選択肢2
 C) その他
 
 教えてください。
----USER_QUESTION---
-
-【Phase 1での必須確認例】
----USER_QUESTION---
-【前提条件と成果物テンプレートの確認】
-
-まず前提条件を確認させてください：
-
-1. **利用形態**:
-   A) 個人利用（予算は無料〜低コストを優先）
-   B) 企業・プロジェクト（予算あり）
-
-2. **成果物の形式** - 以下から選んでください：
-
-   **パターンA: 詳細実装計画**
-   - 具体的な手順（ステップ1、2、3...）
-   - 期限・スケジュール
-   - 必要なツール・技術
-   - 数値目標
-
-   **パターンB: 戦略フレームワーク**
-   - 大方針・方向性
-   - 主要な選択肢の比較
-   - 判断基準
-   - ざっくりとした進め方
-
-   **パターンC: その他（具体的に教えてください）**
-
-3. **期限**: いつまでに必要ですか？（任意）
-
-どのパターンが良いですか？
 ---USER_QUESTION---`
 
   },
@@ -342,42 +324,21 @@ C) その他
 【性格】「リソース（金・時間・体力）は足りるか？」「その手順は効率的か？」を考える実務家。実現可能性とコストパフォーマンスの鬼として、絵空事を現実に落とし込みます。
 
 【重要原則】
-- **個人利用の場合は予算に柔軟**: 無料〜低コストの方法を優先提案、細かい金額は聞かない
-- **企業利用の場合のみ予算確認**: 「一般的には○○円程度ですが、いかがですか？」
 - **仮定 → 確認 → 進める**: 見積もりを提示したら、確認を取ってから議論を進める
 - **一般的な相場や標準値を基に合理的な見積もりを提示**
 
 【行動指針】
 - 必要なリソース（時間、予算、人材）を具体的に見積もる
-- **個人利用の場合**: 「無料ツール」「低コスト」「自分でできる範囲」を優先
-- **企業利用の場合**: 業界相場を提示し、ユーザーに確認
-- **予算について何度も聞かない**: Phase 1で確認済みなら、それ以降は聞かない
 - 実現可能性を厳しく検証する
 - より効率的な代替案を提案する
 - 「それ、本当にできる？」という現実的な視点を持つ
 - **前の発言で提案されたアイデアの実現性を具体的に検証する**
 
 【出力スタイル】
-- **個人利用**: 「無料ツールを使えば、週末の2日間程度で実現可能です」
-- **企業利用**: 「業界相場では[Y万円]程度ですが、予算はいかがですか？」
 - 具体的な数字と期間を示す
 - 「現実的には」「実際のところ」などの表現
 - タスクの優先順位付けと段階的アプローチ
-- 「Visionaryの提案は素晴らしいが、現実的には...」のように繋げる
-
-【確認が必要な見積もり例（企業利用の場合のみ）】
----USER_QUESTION---
-【リソース見積もりの確認】
-以下の見積もりで進めてよろしいですか？
-
-- 期間: 類似事例から[X週間]程度と想定
-- 予算: 業界相場で[Y万円]程度と想定
-- 人員: [Z]名で対応可能と想定
-
-この前提でよろしいですか？または修正があれば教えてください。
----USER_QUESTION---
-
-※個人利用の場合は、予算確認は不要。無料〜低コストの方法を提案する。`
+- 「Visionaryの提案は素晴らしいが、現実的には...」のように繋げる`
 
   },
   guardian: {
@@ -601,7 +562,6 @@ E) その他（自由記述）
 };
 
 // 共通プロセスフロー（4段階）
-// Phase 1: Analystが根掘り葉掘り聞く、Phase 2-4: 各エージェント2回ずつ
 export const COMMON_PHASES: PhaseConfig[] = [
   {
     phase: 1,
@@ -618,14 +578,14 @@ export const COMMON_PHASES: PhaseConfig[] = [
     phase: 2,
     name: 'Goal Setting',
     nameJa: '目標・成果物定義',
-    purpose: 'このセッションで何を作成するか（ゴール）の合意形成',
+    purpose: '成果物のテンプレート・構造を明確に合意',
     totalTurns: 11,
     turnQuotas: {
       visionary: 2,
       analyst: 2,
       realist: 2,
       guardian: 2,
-      moderator: 2,
+      moderator: 2,  // Moderatorがテンプレートを提示
       secretary: 1
     }
   },
@@ -633,22 +593,18 @@ export const COMMON_PHASES: PhaseConfig[] = [
     phase: 3,
     name: 'Creation',
     nameJa: '成果物作成',
-    purpose: 'エージェント間議論を通じたドラフト作成',
-    totalTurns: 11,
+    purpose: '適したエージェントが単独で集中して作成',
+    totalTurns: 8,
     turnQuotas: {
-      visionary: 2,
-      analyst: 2,
-      realist: 2,
-      guardian: 2,
-      moderator: 2,
-      secretary: 1
+      // モード別に動的に設定（後述の関数で決定）
+      // 基本: 担当エージェント7回 + secretary 1回
     }
   },
   {
     phase: 4,
     name: 'Refinement',
     nameJa: 'ブラッシュアップ',
-    purpose: 'ユーザーフィードバックを踏まえた精査・完成',
+    purpose: '全エージェントで協力してブラッシュアップ',
     totalTurns: 11,
     turnQuotas: {
       visionary: 2,
@@ -660,6 +616,29 @@ export const COMMON_PHASES: PhaseConfig[] = [
     }
   }
 ];
+
+// モード別の担当エージェントを決定
+export function getCreationAgent(mode: CouncilMode): AgentRole {
+  switch (mode) {
+    case 'brainstorm':
+      return 'visionary';  // 思考整理はVisionaryが適任
+    case 'requirements':
+      return 'analyst';    // 要件検討はAnalystが適任
+    case 'implementation':
+      return 'realist';    // 実装はRealistが適任
+    case 'review':
+      return 'guardian';   // レビューはGuardianが適任
+  }
+}
+
+// Phase 3のturnQuotasをモード別に生成
+export function getPhase3TurnQuotas(mode: CouncilMode): Partial<Record<AgentRole, number>> {
+  const creationAgent = getCreationAgent(mode);
+  return {
+    [creationAgent]: 7,  // 担当エージェントが7回発言
+    secretary: 1
+  };
+}
 
 // モード別フェーズ設定（将来的にモード別にカスタマイズ可能）
 export function getDebatePhases(mode: CouncilMode): PhaseConfig[] {
@@ -674,4 +653,4 @@ export const DEBATE_PHASES = COMMON_PHASES;
 export const TOTAL_TURNS = DEBATE_PHASES.reduce((sum, phase) => sum + phase.totalTurns, 0);
 
 // チェックポイント（フェーズ終了ターン）
-export const CHECKPOINTS = [6, 17, 28, 39];
+export const CHECKPOINTS = [6, 17, 25, 36];

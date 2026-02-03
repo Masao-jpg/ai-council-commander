@@ -113,37 +113,40 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
   };
 
   return (
-    <div className="bg-gray-800 border-t border-gray-700 px-6 py-4">
-      <div className="flex items-center gap-4">
+    <div className="bg-gray-800 border-t border-gray-700 px-3 py-3 md:px-6 md:py-4">
+      <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-2 md:gap-3 flex-wrap">
           {outputMode === 'implementation' && (
             <button
               onClick={handleRunClaude}
               disabled={isDebating || isExecuting}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold flex items-center gap-2 transition-colors"
+              className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <Play className="w-4 h-4" />
-              Run Claude
+              <span className="hidden md:inline">Run Claude</span>
+              <span className="md:hidden">Run</span>
             </button>
           )}
 
           <button
             onClick={handleExport}
             disabled={isDebating || isExecuting}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold flex items-center gap-2 transition-colors"
+            className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <Download className="w-4 h-4" />
-            Export Doc
+            <span className="hidden md:inline">Export Doc</span>
+            <span className="md:hidden">Doc</span>
           </button>
 
           <button
             onClick={handleExportMemo}
             disabled={isDebating || isExecuting}
-            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold flex items-center gap-2 transition-colors"
+            className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <FileText className="w-4 h-4" />
-            Export Memo
+            <span className="hidden md:inline">Export Memo</span>
+            <span className="md:hidden">Memo</span>
           </button>
         </div>
 

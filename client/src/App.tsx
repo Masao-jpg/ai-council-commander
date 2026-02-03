@@ -190,8 +190,8 @@ function App() {
         </div>
       </div>
 
-      {/* Action Bar - Hidden on mobile */}
-      <div className="hidden md:block">
+      {/* Action Bar - Visible on mobile */}
+      <div className="flex-shrink-0">
         <ActionBar
           plan={debateState.currentPlan}
           memo={debateState.currentMemo}

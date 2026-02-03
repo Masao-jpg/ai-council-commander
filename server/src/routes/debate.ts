@@ -7,7 +7,8 @@ import {
   AgentRole,
   PhaseConfig,
   getModeSpecificInstruction,
-  CouncilMode
+  CouncilMode,
+  getPhase3TurnQuotas
 } from '../councilConfig';
 
 const router = Router();
@@ -472,10 +473,16 @@ router.post('/next-phase', async (req, res) => {
 
     // 次のフェーズへ
     session.currentPhase++;
-    const nextPhase = DEBATE_PHASES[session.currentPhase - 1];
+    let nextPhase = DEBATE_PHASES[session.currentPhase - 1];
+
+    // Phase 3の場合、モード別にturnQuotasを設定
+    if (session.currentPhase === 3) {
+      const phase3Quotas = getPhase3TurnQuotas(session.mode as CouncilMode);
+      nextPhase = { ...nextPhase, turnQuotas: phase3Quotas };
+    }
 
     // 新しいデッキを生成（Analystを最初に配置）
-    session.speakerDeck = createSpeakerDeck(nextPhase, true);
+    session.speakerDeck = createSpeakerDeck(nextPhase, session.currentPhase === 2); // Phase 2のみAnalyst優先
     session.currentTurn = 0;
 
     res.json({
