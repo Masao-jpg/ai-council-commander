@@ -60,6 +60,81 @@ export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
   }
 };
 
+// モード別の追加指示を生成
+export function getModeSpecificInstruction(mode: CouncilMode): string {
+  const modeConfig = MODE_CONFIGS[mode];
+
+  let instruction = `\n\n【重要】現在のモード: ${modeConfig.nameJa}\n`;
+  instruction += `【モードの目的】${modeConfig.purpose}\n`;
+  instruction += `【期待される成果物】${modeConfig.expectedOutcome}\n\n`;
+
+  switch (mode) {
+    case 'brainstorm':
+      instruction += `【このモードでの振る舞い】
+- ユーザーの曖昧なアイデアを具体化することに集中してください
+- 多様な観点（SWOT分析、5W1H、ロジックツリーなど）から検討してください
+- 実装の詳細は聞かず、「何をしたいか」「なぜやるか」に焦点を当ててください
+- フレームワークを使って思考を整理してください`;
+      break;
+
+    case 'requirements':
+      instruction += `【このモードでの振る舞い】
+- 要件定義に必要な情報を収集してください
+- 機能要件と非機能要件を明確に分けてください
+- 実現可能性と優先順位を検討してください
+- 具体的な計画書・要件定義書の作成を目指してください`;
+      break;
+
+    case 'implementation':
+      instruction += `【このモードでの振る舞い】
+- 具体的な実装手順に焦点を当ててください
+- 使用する技術、ツール、ライブラリを明確にしてください
+- ステップバイステップの作業手順を提示してください
+- コードやレシピなど、具体的な成果物の作成を目指してください`;
+      break;
+
+    case 'review':
+      instruction += `【このモードでの振る舞い】
+- **重要**: このモードでは「既存の成果物」をレビューすることが目的です
+- **Phase 1では、必ずユーザーに「レビュー対象の成果物」を提示してもらってください**
+- 一般的な質問ではなく、「どの成果物をレビューしますか？」と聞いてください
+- 成果物が提示されたら、品質、安全性、改善点を批判的に検証してください
+- 具体的な修正案やテスト結果を提示してください
+- 新規作成ではなく、既存成果物の改善に焦点を当ててください
+
+【Phase 1での質問例】
+---USER_QUESTION---
+【レビュー対象の確認】
+
+このモードは「既存成果物のレビュー」が目的です。
+
+1. **レビュー対象の成果物**
+   レビューしたい成果物を教えてください：
+   - ソースコード（ファイル名、GitHubリンクなど）
+   - ドキュメント（内容を貼り付け）
+   - 設計書、仕様書
+   - その他
+
+2. **レビューの観点**
+   特に重視してほしい点はありますか？
+   A) セキュリティ・安全性
+   B) パフォーマンス・効率性
+   C) 保守性・可読性
+   D) すべて網羅的に
+
+3. **期待するアウトプット**
+   A) 問題点の指摘のみ
+   B) 具体的な修正案も含む
+   C) テスト結果報告も含む
+
+レビュー対象の成果物を共有してください。
+---USER_QUESTION---`;
+      break;
+  }
+
+  return instruction;
+}
+
 export interface PhaseConfig {
   phase: number;
   name: string;

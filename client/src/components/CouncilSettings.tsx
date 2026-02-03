@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { PlayCircle, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PlayCircle, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import type { CouncilMode } from '../types';
 import { MODE_INFO } from '../types';
 
@@ -12,6 +12,14 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
   const [theme, setTheme] = useState('');
   const [mode, setMode] = useState<CouncilMode>('brainstorm');
   const [outputMode, setOutputMode] = useState<'implementation' | 'documentation'>('implementation');
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  // Auto-collapse on mobile when debate starts
+  useEffect(() => {
+    if (isDebating && window.innerWidth < 768) {
+      setIsExpanded(false);
+    }
+  }, [isDebating]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,24 +30,55 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
 
   return (
     <div className="p-3 md:p-4 bg-gray-800">
-      <div className="flex items-center gap-2 mb-3">
-        <Settings className="w-5 h-5 md:w-4 md:h-4 text-blue-400" />
-        <h2 className="text-lg md:text-base font-semibold">議題設定</h2>
+      {/* Header - Collapsible on Mobile */}
+      <div
+        className="flex items-center justify-between cursor-pointer md:cursor-default"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-5 h-5 md:w-4 md:h-4 text-blue-400" />
+            <h2 className="text-lg md:text-base font-semibold">議題設定</h2>
+          </div>
+          {/* Collapsed preview - Mobile only */}
+          {!isExpanded && theme && (
+            <div className="md:hidden text-xs text-gray-400 mt-1">
+              <div className="truncate">{MODE_INFO[mode].nameJa} • {theme}</div>
+            </div>
+          )}
+        </div>
+        {/* Toggle button - Mobile only */}
+        <button
+          type="button"
+          className="md:hidden text-gray-400 ml-2"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+        >
+          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3 md:space-y-3">
-        {/* Mode Selection */}
+      {/* Form - Collapsible on Mobile */}
+      <form
+        onSubmit={handleSubmit}
+        className={`space-y-3 md:space-y-3 transition-all duration-300 overflow-hidden ${
+          isExpanded ? 'max-h-[2000px] opacity-100 mt-3' : 'max-h-0 opacity-0 mt-0 md:max-h-[2000px] md:opacity-100 md:mt-3'
+        }`}
+      >
+        {/* Mode Selection - Mobile Optimized */}
         <div>
-          <label className="block text-sm md:text-xs font-medium mb-2 text-gray-300">
+          <label className="block text-base md:text-xs font-medium mb-2 text-gray-300">
             モード選択
           </label>
           <div className="grid grid-cols-2 gap-2">
             {(Object.keys(MODE_INFO) as CouncilMode[]).map((m) => (
               <label
                 key={m}
-                className={`flex flex-col p-3 md:p-2 border-2 rounded-lg cursor-pointer transition-all ${
+                className={`flex flex-col p-2 border-2 rounded-lg cursor-pointer transition-all ${
                   mode === m
-                    ? 'border-blue-500 bg-blue-500 bg-opacity-10'
+                    ? 'border-blue-500 bg-blue-500 bg-opacity-20'
                     : 'border-gray-600 hover:border-gray-500'
                 } ${isDebating ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -51,24 +90,24 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
                   className="hidden"
                   disabled={isDebating}
                 />
-                <span className="text-sm md:text-xs font-semibold mb-1">{MODE_INFO[m].nameJa}</span>
-                <span className="text-xs text-gray-400">{MODE_INFO[m].description}</span>
+                <span className="text-sm md:text-xs font-semibold mb-1 truncate">{MODE_INFO[m].nameJa}</span>
+                <span className="text-xs text-gray-400 line-clamp-2">{MODE_INFO[m].description}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* Theme Input - Larger on mobile */}
+        {/* Theme Input - Compact on mobile */}
         <div>
-          <label className="block text-sm md:text-xs font-medium mb-2 text-gray-300">
+          <label className="block text-base md:text-xs font-medium mb-2 text-gray-300">
             議題
           </label>
           <textarea
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
             placeholder="例: 月70万円の支出を65万円に削減する方法"
-            className="w-full px-4 py-3 md:px-2 md:py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-base md:text-sm focus:outline-none focus:border-blue-500 text-white placeholder-gray-400 resize-none"
-            rows={3}
+            className="w-full px-3 py-2 md:px-2 md:py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-sm focus:outline-none focus:border-blue-500 text-white placeholder-gray-400 resize-none"
+            rows={2}
             disabled={isDebating}
           />
         </div>
@@ -108,13 +147,13 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
           </div>
         </div>
 
-        {/* Start Button - Larger on mobile */}
+        {/* Start Button - Compact on mobile */}
         <button
           type="submit"
           disabled={!theme.trim() || isDebating}
-          className="w-full py-4 md:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-lg md:text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg"
+          className="w-full py-3 md:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-base md:text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg"
         >
-          <PlayCircle className="w-6 h-6 md:w-4 md:h-4" />
+          <PlayCircle className="w-5 h-5 md:w-4 md:h-4" />
           {isDebating ? '議論中...' : '評議会を開始'}
         </button>
       </form>

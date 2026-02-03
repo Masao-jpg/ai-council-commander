@@ -15,7 +15,8 @@
       "Bash(python -m json.tool:*)",
       "Bash(npx cap init:*)",
       "Bash(npm run build:*)",
-      "Bash(npx cap add android)"
+      "Bash(npx cap add android)",
+      "Bash(npx cap sync)"
     ]
   }
 }

@@ -5,7 +5,9 @@ import {
   DEBATE_PHASES,
   CHECKPOINTS,
   AgentRole,
-  PhaseConfig
+  PhaseConfig,
+  getModeSpecificInstruction,
+  CouncilMode
 } from '../councilConfig';
 
 const router = Router();
@@ -264,6 +266,11 @@ router.post('/next-turn', async (req, res) => {
 
       // コンテキスト構築
       let contextPrompt = `${agentConfig.systemPrompt}\n\n`;
+
+      // モード別の追加指示を追加
+      const modeInstruction = getModeSpecificInstruction(session.mode as CouncilMode);
+      contextPrompt += modeInstruction + '\n\n';
+
       contextPrompt += `【議題】${session.theme}\n`;
       contextPrompt += `【出力モード】${session.outputMode === 'implementation' ? '実装モード' : 'ドキュメントモード'}\n`;
       contextPrompt += `【現在のフェーズ】Phase ${session.currentPhase}: ${currentPhase.nameJa}\n`;
@@ -298,16 +305,45 @@ router.post('/next-turn', async (req, res) => {
         contextPrompt += `あなたは**必ず**以下のルールに従ってユーザーに質問してください：\n\n`;
         contextPrompt += `1. 出力は必ず "---USER_QUESTION---" で開始し、"---USER_QUESTION---" で終了すること\n`;
         contextPrompt += `2. マーカーの前後に説明文を書かないこと\n`;
-        contextPrompt += `3. マーカーの中に【確認事項】として質問を箇条書きで記載すること\n\n`;
-        contextPrompt += `【正しい出力例】\n`;
-        contextPrompt += `---USER_QUESTION---\n`;
-        contextPrompt += `【確認事項】\n`;
-        contextPrompt += `1. 目標の具体的な定義は？\n`;
-        contextPrompt += `2. 予算と人数は？\n`;
-        contextPrompt += `3. 利用可能な設備は？\n`;
-        contextPrompt += `4. 時間的制約は？\n`;
-        contextPrompt += `5. 品質・安全基準は？\n`;
-        contextPrompt += `---USER_QUESTION---\n\n`;
+        contextPrompt += `3. マーカーの中に【確認事項】として質問を記載すること\n\n`;
+
+        // モード別の質問例を提供
+        if (session.mode === 'review') {
+          contextPrompt += `【reviewモード専用の質問例】\n`;
+          contextPrompt += `---USER_QUESTION---\n`;
+          contextPrompt += `【レビュー対象の確認】\n\n`;
+          contextPrompt += `このモードは「既存成果物のレビュー」を目的としています。\n\n`;
+          contextPrompt += `1. **レビュー対象の成果物**\n`;
+          contextPrompt += `   レビューしたい成果物を共有してください：\n`;
+          contextPrompt += `   - ソースコード（ファイル、GitHubリンクなど）\n`;
+          contextPrompt += `   - ドキュメント（内容を貼り付け）\n`;
+          contextPrompt += `   - 設計書、仕様書\n`;
+          contextPrompt += `   - その他の成果物\n\n`;
+          contextPrompt += `2. **レビューの観点**\n`;
+          contextPrompt += `   特に重視してほしい点：\n`;
+          contextPrompt += `   A) セキュリティ・安全性\n`;
+          contextPrompt += `   B) パフォーマンス・効率性\n`;
+          contextPrompt += `   C) 保守性・可読性\n`;
+          contextPrompt += `   D) すべて網羅的に\n\n`;
+          contextPrompt += `3. **期待するアウトプット**\n`;
+          contextPrompt += `   A) 問題点の指摘のみ\n`;
+          contextPrompt += `   B) 具体的な修正案も含む\n`;
+          contextPrompt += `   C) テスト結果報告も含む\n\n`;
+          contextPrompt += `レビュー対象の成果物を共有してください。\n`;
+          contextPrompt += `---USER_QUESTION---\n\n`;
+        } else {
+          contextPrompt += `【標準の質問例】\n`;
+          contextPrompt += `---USER_QUESTION---\n`;
+          contextPrompt += `【確認事項】\n\n`;
+          contextPrompt += `1. **目標・目的**: 何を達成したいですか？\n`;
+          contextPrompt += `2. **現状**: 現在の状況や課題は？\n`;
+          contextPrompt += `3. **制約条件**: 予算、期限、利用可能なリソースは？\n`;
+          contextPrompt += `4. **期待する成果物**: どのような形式のアウトプットが必要ですか？\n`;
+          contextPrompt += `5. **その他**: 特に重視したい点や懸念事項は？\n\n`;
+          contextPrompt += `教えてください。\n`;
+          contextPrompt += `---USER_QUESTION---\n\n`;
+        }
+
         contextPrompt += `※マーカーの外に文章を書くと、システムが質問を検出できなくなります。必ずマーカーで囲んでください。\n`;
       }
 
