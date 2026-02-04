@@ -49,7 +49,7 @@ export default function DebateStream({
   isWaitingForUserResponse,
   currentUserQuestion,
   currentPhase,
-  userResponses,
+  userResponses: _userResponses, // Intentionally unused after bug fix
   userPhaseInstructions,
   onMessage,
   onUserResponse,
@@ -126,21 +126,20 @@ export default function DebateStream({
       console.log('🔄 Requesting next turn...');
       setCurrentAgent('facilitator' as AgentRole); // Temporary loading indicator
 
-      // Use immediate response if provided, otherwise get latest from state
-      const latestUserResponse = immediateUserResponse || (userResponses.length > 0
-        ? userResponses[userResponses.length - 1]
-        : null);
-
-      if (latestUserResponse) {
-        console.log('📤 Sending user response to API:', latestUserResponse.answer.substring(0, 100));
+      // CRITICAL: Only use immediateUserResponse if explicitly provided
+      // DO NOT re-send old responses from userResponses array
+      if (immediateUserResponse) {
+        console.log('📤 Sending user response to API:', immediateUserResponse.answer.substring(0, 100));
+      } else {
+        console.log('ℹ️ No user response to send this turn');
       }
 
       // Get phase instruction for next phase
       const phaseInstruction = userPhaseInstructions[currentPhase + 1];
 
       const requestBody: any = { sessionId };
-      if (latestUserResponse) {
-        requestBody.userResponse = latestUserResponse;
+      if (immediateUserResponse) {
+        requestBody.userResponse = immediateUserResponse;
       }
       if (phaseInstruction) {
         requestBody.userPhaseInstruction = phaseInstruction;
@@ -195,18 +194,21 @@ export default function DebateStream({
       // Simulate thinking time
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Check for user question
-      console.log('🔍 Checking for user question in content (first 200 chars):', data.content.substring(0, 200));
+      // Check for user question (検出は全文を対象とする)
+      console.log('🔍 Checking for user question in FULL content (length:', data.content.length, 'chars)');
       console.log('🔍 Contains USER_QUESTION marker:', data.content.includes('---USER_QUESTION---'));
+
+      // 全文から質問マーカーを検出
       const userQuestionMatch = data.content.match(/---USER_QUESTION---([\s\S]*?)---USER_QUESTION---/);
       const hasUserQuestion = userQuestionMatch !== null;
       const userQuestion = userQuestionMatch ? userQuestionMatch[1].trim() : '';
 
       if (hasUserQuestion) {
         console.log(`✅ User question detected! Question length: ${userQuestion.length} chars`);
-        console.log(`📋 Question preview: "${userQuestion.substring(0, 150)}..."`);
+        console.log(`📋 Question full text: "${userQuestion}"`);
       } else if (data.content.includes('---USER_QUESTION---')) {
-        console.warn('⚠️ Found USER_QUESTION marker but regex did not match! Content:', data.content);
+        console.warn('⚠️ Found USER_QUESTION marker but regex did not match!');
+        console.warn('Content preview:', data.content.substring(0, 500));
       } else {
         console.log('ℹ️ No user question in this turn');
       }

@@ -79,8 +79,16 @@ function detectStepExtensionNeeded(text: string): boolean {
   return text.includes('---STEP_EXTENSION_NEEDED---');
 }
 
-function detectPhaseCompleted(text: string): boolean {
-  return text.includes('---PHASE_COMPLETED---');
+function detectPhaseCompleted(text: string, currentPhase: number): boolean {
+  // フェーズ完了タグの厳格な検証：現在のフェーズ番号と一致する必要がある
+  const regex = new RegExp(`---PHASE_COMPLETED---\\s*Phase\\s*${currentPhase}\\s*完了\\s*---PHASE_COMPLETED---`);
+  const match = regex.test(text);
+
+  if (text.includes('---PHASE_COMPLETED---') && !match) {
+    console.log(`⚠️ Found PHASE_COMPLETED tag but not for current phase ${currentPhase}`);
+  }
+
+  return match;
 }
 
 // 議事メモ係用のメモを生成
@@ -440,8 +448,8 @@ router.post('/next-turn', async (req, res) => {
         };
       }
 
-      // PHASE_COMPLETED検出
-      if (detectPhaseCompleted(text)) {
+      // PHASE_COMPLETED検出（現在のフェーズ番号と一致する必要がある）
+      if (detectPhaseCompleted(text, session.currentPhase)) {
         console.log(`🏁 PHASE_COMPLETED detected for phase ${session.currentPhase}`);
         phaseCompleted = true;
       }
