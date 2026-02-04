@@ -67,7 +67,7 @@ export default function PhaseInstructionBox({ currentPhase, nextPhaseName, onCon
       </button>
 
       {/* 次へ進むボタン */}
-      {currentPhase < 4 ? (
+      {currentPhase < 5 ? (
         <button
           onClick={handleContinue}
           className="w-full py-5 md:py-4 bg-yellow-500 hover:bg-yellow-600 text-gray-900 rounded-lg font-bold text-lg md:text-base flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-lg"

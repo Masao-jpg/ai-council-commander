@@ -226,8 +226,8 @@ export default function DebateStream({
         console.log('⏸️ Phase complete! Showing checkpoint...');
         onWaitingForPhaseTransition(true);
 
-        // Set next phase name
-        const phaseNames = ['ヒアリング（現状把握）', '目標・成果物定義', '成果物作成', 'ブラッシュアップ'];
+        // Set next phase name - 新5フェーズ対応
+        const phaseNames = ['情報収集', '発散', '構造化', '生成', '洗練'];
         if (data.nextPhaseAvailable) {
           setNextPhaseName(phaseNames[data.phase]);
         }
