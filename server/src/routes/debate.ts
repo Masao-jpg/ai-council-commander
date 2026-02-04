@@ -541,12 +541,14 @@ router.post('/next-turn', async (req, res) => {
     let memoUpdate = null;
 
     // フェーズ完了判定
-    const isPhaseComplete = session.speakerDeck.length === 0;
+    // IMPORTANT: Phase completion is determined by Facilitator's ---PHASE_COMPLETED--- tag, NOT by speaker deck length
+    // Speaker deck is just for turn order management, not phase progress
+    const isPhaseComplete = phaseCompleted;
 
     // チェックポイントはフェーズ完了時とする（フェーズ選択機能対応）
     const isCheckpoint = isPhaseComplete;
 
-    console.log(`📊 Turn complete: isPhaseComplete=${isPhaseComplete}, remainingInDeck=${session.speakerDeck.length}`);
+    console.log(`📊 Turn complete: isPhaseComplete=${isPhaseComplete}, phaseCompleted=${phaseCompleted}, remainingInDeck=${session.speakerDeck.length}`);
 
     res.json({
       success: true,
