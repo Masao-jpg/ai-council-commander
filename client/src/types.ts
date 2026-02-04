@@ -59,6 +59,9 @@ export interface DebateState {
   estimatedStepTurns: number;  // Facilitatorの見積もりターン数
   actualStepTurns: number;  // 実際の議論ターン数（Facilitatorを除く）
   isWaitingForPhaseTransition: boolean;
+  isWaitingForStepTransition: boolean;
+  completedStep: string;
+  completedStepName: string;
   isWaitingForUserResponse: boolean;
   currentUserQuestion: string;
   userResponses: UserResponse[];

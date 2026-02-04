@@ -4,6 +4,7 @@ import type { Message, AgentRole, UserResponse } from '../types';
 import { AGENT_INFO } from '../types';
 import UserInputBox from './UserInputBox';
 import PhaseInstructionBox from './PhaseInstructionBox';
+import StepInstructionBox from './StepInstructionBox';
 import { getApiUrl } from '../config';
 
 interface DebateStreamProps {
@@ -14,6 +15,9 @@ interface DebateStreamProps {
   sessionId: string;
   isDebating: boolean;
   isWaitingForPhaseTransition: boolean;
+  isWaitingForStepTransition: boolean;
+  completedStep: string;
+  completedStepName: string;
   isWaitingForUserResponse: boolean;
   currentUserQuestion: string;
   currentPhase: number;
@@ -34,6 +38,7 @@ interface DebateStreamProps {
     actualStepTurns?: number
   ) => void;
   onWaitingForPhaseTransition: (waiting: boolean) => void;
+  onWaitingForStepTransition: (waiting: boolean, step?: string, stepName?: string) => void;
   onPhaseInstruction: (phase: number, instruction: string) => void;
   onDebateEnd: () => void;
 }
@@ -46,6 +51,9 @@ export default function DebateStream({
   sessionId,
   isDebating,
   isWaitingForPhaseTransition,
+  isWaitingForStepTransition,
+  completedStep,
+  completedStepName,
   isWaitingForUserResponse,
   currentUserQuestion,
   currentPhase,
@@ -57,6 +65,7 @@ export default function DebateStream({
   onMemoUpdate,
   onPhaseInfoUpdate,
   onWaitingForPhaseTransition,
+  onWaitingForStepTransition,
   onPhaseInstruction,
   onDebateEnd,
 }: DebateStreamProps) {
@@ -167,6 +176,14 @@ export default function DebateStream({
         return;
       }
 
+      // Check for step transition (same pattern as phase transition)
+      if (data.needsStepTransition) {
+        console.log('⏸️ Step complete, waiting for user');
+        setCurrentAgent(null);
+        onWaitingForStepTransition(true, data.completedStep, data.completedStepName);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
@@ -274,30 +291,6 @@ export default function DebateStream({
           if (data.stepUpdate.type === 'start') {
             // Step started
             console.log(`▶️ Step ${data.stepUpdate.step} started: ${data.stepUpdate.stepName} (${data.stepUpdate.estimatedTurns} turns)`);
-          } else if (data.stepUpdate.type === 'completed') {
-            // Step completed
-            console.log(`✅ Step ${data.stepUpdate.step} completed: ${data.stepUpdate.stepName}`);
-            // Add a special message to display step completion
-            onMessage({
-              agent: 'facilitator',
-              content: `[STEP_COMPLETED]\n✅ ステップ ${data.stepUpdate.step}（${data.stepUpdate.stepName}）が完了しました！\n\n次のステップに進みます...`,
-              timestamp: new Date()
-            });
-            // Pause for step completion ceremony (like phase completion)
-            console.log('🎊 Step completion ceremony - pausing before next step');
-            setCurrentAgent(null);
-
-            // Wait a moment for the message to display, then continue (or wait for user if manual mode)
-            if (autoProgress) {
-              setTimeout(() => {
-                console.log('⏩ Auto-progress: continuing to next step');
-                // Start the next turn which will begin the next step
-                runNextTurn();
-              }, 1500); // 1.5 second pause for ceremony
-            } else {
-              console.log('⏸️ Manual mode: waiting for user to continue');
-              return; // Stop and wait for user to manually trigger next turn
-            }
           } else if (data.stepUpdate.type === 'extension_needed') {
             // Extension judgment needed
             console.log(`⏰ Step ${data.stepUpdate.step} needs extension judgment`);
@@ -436,6 +429,16 @@ export default function DebateStream({
     }
 
     await handleContinueToNextPhase();
+  };
+
+  const handleStepTransition = async () => {
+    console.log('🚀 Step transition - continuing to next step');
+
+    // Clear the step transition flag
+    onWaitingForStepTransition(false);
+
+    // Start the next turn which will begin the next step
+    await runNextTurn();
   };
 
   const handleExtendDiscussion = async () => {
@@ -722,6 +725,15 @@ export default function DebateStream({
             nextPhaseName={nextPhaseName}
             onContinue={handlePhaseTransition}
             onExtend={handleExtendDiscussion}
+          />
+        )}
+
+        {/* Step Completion UI */}
+        {isWaitingForStepTransition && !isWaitingForUserResponse && !isWaitingForExtensionJudgment && (
+          <StepInstructionBox
+            completedStep={completedStep}
+            completedStepName={completedStepName}
+            onContinue={handleStepTransition}
           />
         )}
 

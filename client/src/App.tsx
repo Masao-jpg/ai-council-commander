@@ -25,6 +25,9 @@ function App() {
     estimatedStepTurns: 0,
     actualStepTurns: 0,
     isWaitingForPhaseTransition: false,
+    isWaitingForStepTransition: false,
+    completedStep: '',
+    completedStepName: '',
     isWaitingForUserResponse: false,
     currentUserQuestion: '',
     userResponses: [],
@@ -64,6 +67,9 @@ function App() {
       estimatedStepTurns: 0,
       actualStepTurns: 0,
       isWaitingForPhaseTransition: false,
+      isWaitingForStepTransition: false,
+      completedStep: '',
+      completedStepName: '',
       isWaitingForUserResponse: false,
       currentUserQuestion: '',
       userResponses: [],
@@ -144,11 +150,21 @@ function App() {
     }));
   };
 
+  const setWaitingForStepTransition = (waiting: boolean, step?: string, stepName?: string) => {
+    setDebateState(prev => ({
+      ...prev,
+      isWaitingForStepTransition: waiting,
+      completedStep: step || prev.completedStep,
+      completedStepName: stepName || prev.completedStepName,
+    }));
+  };
+
   const stopDebate = () => {
     setDebateState(prev => ({
       ...prev,
       isDebating: false,
       isWaitingForPhaseTransition: false,
+      isWaitingForStepTransition: false,
     }));
   };
 
@@ -218,6 +234,9 @@ function App() {
               sessionId={debateState.sessionId}
               isDebating={debateState.isDebating}
               isWaitingForPhaseTransition={debateState.isWaitingForPhaseTransition}
+              isWaitingForStepTransition={debateState.isWaitingForStepTransition}
+              completedStep={debateState.completedStep}
+              completedStepName={debateState.completedStepName}
               isWaitingForUserResponse={debateState.isWaitingForUserResponse}
               currentUserQuestion={debateState.currentUserQuestion}
               currentPhase={debateState.currentPhase}
@@ -229,6 +248,7 @@ function App() {
               onMemoUpdate={updateMemo}
               onPhaseInfoUpdate={updatePhaseInfo}
               onWaitingForPhaseTransition={setWaitingForPhaseTransition}
+              onWaitingForStepTransition={setWaitingForStepTransition}
               onPhaseInstruction={setPhaseInstruction}
               onDebateEnd={stopDebate}
             />

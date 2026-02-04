@@ -478,11 +478,13 @@ router.post('/next-turn', async (req, res) => {
       const stepCompleted = detectStepCompleted(text);
       if (stepCompleted) {
         console.log(`✅ STEP_COMPLETED detected: ${stepCompleted.stepNumber} - ${stepCompleted.stepName}`);
-        stepUpdate = {
-          type: 'completed',
-          step: stepCompleted.stepNumber,
-          stepName: stepCompleted.stepName
-        };
+
+        // Add completion message to history
+        session.history.push({
+          agent: nextAgent,
+          content: text
+        });
+
         // Reset step counters for next step
         session.currentStep = '';
         session.currentStepName = '';
@@ -490,6 +492,15 @@ router.post('/next-turn', async (req, res) => {
         session.actualStepTurns = 0;
         session.stepExtended = false;
         session.proposedExtensionTurns = 0;
+
+        // Return step transition signal (same pattern as phase completion)
+        console.log(`⏸️ Step ${stepCompleted.stepNumber} complete, needs transition`);
+        return res.status(400).json({
+          error: 'Step completed',
+          needsStepTransition: true,
+          completedStep: stepCompleted.stepNumber,
+          completedStepName: stepCompleted.stepName
+        });
       }
 
       // STEP_EXTENSION_NEEDED検出
