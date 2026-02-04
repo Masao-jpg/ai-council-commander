@@ -238,6 +238,33 @@ router.post('/export-to-google-docs', async (req, res) => {
       throw new Error('Failed to create document');
     }
 
+    // Move document to specified folder if GOOGLE_DRIVE_FOLDER_ID is set
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    if (folderId) {
+      try {
+        // Get current parents
+        const file = await drive.files.get({
+          fileId: documentId,
+          fields: 'parents'
+        });
+
+        const previousParents = file.data.parents?.join(',');
+
+        // Move to new folder
+        await drive.files.update({
+          fileId: documentId,
+          addParents: folderId,
+          removeParents: previousParents,
+          fields: 'id, parents'
+        });
+
+        console.log(`Document moved to folder: ${folderId}`);
+      } catch (moveError: any) {
+        console.warn('Could not move document to folder:', moveError.message);
+        // Continue anyway - document is created but in root
+      }
+    }
+
     // Convert markdown-like content to simple formatted text
     // Split content into lines and create paragraph requests
     const lines = content.split('\n');

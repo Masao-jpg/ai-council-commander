@@ -49,18 +49,34 @@ GOOGLE_SERVICE_ACCOUNT_KEY=path/to/google-credentials.json
 
 To enable Google Docs export functionality:
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select an existing one
-3. Enable the following APIs:
-   - Google Docs API
-   - Google Drive API
-4. Create a Service Account:
+1. **Google Cloud Console Setup**
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create a new project or select an existing one
+   - Enable the following APIs:
+     - Google Docs API
+     - Google Drive API
+
+2. **Create Service Account**
    - Go to "IAM & Admin" > "Service Accounts"
    - Click "Create Service Account"
-   - Grant necessary permissions
+   - Name it (e.g., "ai-council-docs")
    - Create a JSON key and download it
-5. Save the JSON key file to your server directory
-6. Set `GOOGLE_SERVICE_ACCOUNT_KEY` in `.env` to the path of the JSON file
+   - Copy the service account email (e.g., `ai-council-docs@project-id.iam.gserviceaccount.com`)
+
+3. **Prepare Google Drive Folder**
+   - Open Google Drive and create a folder for AI Council documents
+   - Share the folder with the service account email (as Editor)
+   - Copy the folder ID from the URL: `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
+
+4. **Set Environment Variables**
+   ```
+   GOOGLE_SERVICE_ACCOUNT_KEY=./google-credentials.json
+   GOOGLE_DRIVE_FOLDER_ID=your_folder_id_here
+   ```
+
+5. **For Render Deployment**
+   - `GOOGLE_SERVICE_ACCOUNT_KEY`: Paste the entire JSON content as a string
+   - `GOOGLE_DRIVE_FOLDER_ID`: Paste the folder ID
 
 ### Development
 
