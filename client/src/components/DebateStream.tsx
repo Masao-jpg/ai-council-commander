@@ -64,6 +64,7 @@ export default function DebateStream({
   const [nextPhaseName, setNextPhaseName] = useState('');
   const [isWaitingForExtensionJudgment, setIsWaitingForExtensionJudgment] = useState(false);
   const [extensionStepInfo, setExtensionStepInfo] = useState<any>(null);
+  const [autoProgress, setAutoProgress] = useState(true); // 自動進行モード（デフォルトON）
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDebatingRef = useRef(isDebating);
   const isWaitingRef = useRef(isWaitingForPhaseTransition);
@@ -343,7 +344,7 @@ export default function DebateStream({
       const currentIsDebating = isDebatingRef.current;
       const currentIsWaiting = isWaitingRef.current;
 
-      console.log(`⏭️ Checking if should continue... (isDebating=${currentIsDebating}, isWaitingForPhaseTransition=${currentIsWaiting})`);
+      console.log(`⏭️ Checking if should continue... (isDebating=${currentIsDebating}, isWaitingForPhaseTransition=${currentIsWaiting}, autoProgress=${autoProgress})`);
 
       if (!currentIsDebating) {
         console.log('⏹️ Stopping: debate ended');
@@ -352,6 +353,13 @@ export default function DebateStream({
 
       if (currentIsWaiting) {
         console.log('⏸️ Stopping: waiting for phase transition');
+        return;
+      }
+
+      // 自動進行モードがOFFの場合は停止（ユーザーが手動で進める）
+      if (!autoProgress) {
+        console.log('⏸️ Stopping: auto-progress is OFF');
+        setCurrentAgent(null);
         return;
       }
 
@@ -535,6 +543,20 @@ export default function DebateStream({
       <div className="border-b border-gray-700 px-3 md:px-6 py-3 flex items-center gap-2 flex-shrink-0">
         <MessageSquare className="w-5 h-5 text-green-400" />
         <h2 className="text-lg font-semibold">Debate Stream</h2>
+
+        {/* 自動進行モードトグル */}
+        <label className="flex items-center gap-2 ml-4 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoProgress}
+            onChange={(e) => setAutoProgress(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="text-xs md:text-sm text-gray-400">
+            自動進行
+          </span>
+        </label>
+
         {isDebating && !isWaitingForPhaseTransition && (
           <span className="ml-auto flex items-center gap-2 text-sm text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin" />
