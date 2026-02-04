@@ -178,10 +178,18 @@ export default function DebateStream({
       // Set current agent
       console.log(`💬 ${data.agent} is speaking...`);
 
+      // Validate agent before setting
+      if (!AGENT_INFO[data.agent as AgentRole]) {
+        console.error(`❌ Unknown agent type from server: ${data.agent}`);
+        console.error('Available agents:', Object.keys(AGENT_INFO));
+        throw new Error(`Unknown agent type: ${data.agent}`);
+      }
+
       try {
         setCurrentAgent(data.agent);
       } catch (err) {
         console.error('❌ Error setting current agent:', err);
+        throw err;
       }
 
       // Simulate thinking time
