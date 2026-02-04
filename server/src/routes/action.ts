@@ -346,23 +346,35 @@ router.post('/export-to-google-docs', async (req, res) => {
       });
     }
 
-    // Make the document publicly readable (anyone with the link can view)
-    await drive.permissions.create({
-      fileId: documentId,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone'
-      }
-    });
+    // Try to make the document publicly readable (anyone with the link can view)
+    // This might fail due to organization policies, but the document is still created
+    let isPublic = false;
+    try {
+      await drive.permissions.create({
+        fileId: documentId,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone'
+        }
+      });
+      isPublic = true;
+    } catch (permError: any) {
+      console.warn('Could not set public permissions:', permError.message);
+      // Continue anyway - document is created but not public
+    }
 
     const docUrl = `https://docs.google.com/document/d/${documentId}/edit`;
 
     res.json({
       success: true,
-      message: 'Document created successfully',
+      message: isPublic
+        ? 'Document created successfully (public)'
+        : 'Document created successfully (private - you may need to share it manually)',
       documentId,
       url: docUrl,
-      title
+      title,
+      isPublic,
+      note: !isPublic ? 'The document was created but could not be made public. You can share it manually from Google Drive.' : undefined
     });
   } catch (error: any) {
     console.error('Error exporting to Google Docs:', error);
