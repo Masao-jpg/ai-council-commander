@@ -387,10 +387,13 @@ router.post('/next-turn', async (req, res) => {
 
           // 2ターンごとの監視
           if (session.turnsSinceLastFacilitator >= 2) {
-            contextPrompt += `🔍 **監視タイミング**: 前回の介入から${session.turnsSinceLastFacilitator}ターン経過しています。\n`;
-            contextPrompt += `議論がステップの目的（${session.currentStepName}）から逸脱していないか確認してください。\n`;
-            contextPrompt += `- 順調な場合: 「進行良好です」と短く促すか、静観\n`;
-            contextPrompt += `- 逸脱時: 目的に立ち返るよう軌道修正（例: 「HowではなくWhyに集中してください」）\n\n`;
+            contextPrompt += `\n🔍 【必須】2ターン監視タイミング\n`;
+            contextPrompt += `前回の介入から${session.turnsSinceLastFacilitator}ターン経過しました。\n`;
+            contextPrompt += `直近の議論がステップの目的（${session.currentStepName}）から逸脱していないか**必ず確認**してください。\n\n`;
+            contextPrompt += `**判定と発言:**\n`;
+            contextPrompt += `- 順調な場合: 「進行良好です。このまま続けてください。」\n`;
+            contextPrompt += `- 逸脱時: 目的に立ち返るよう明確に軌道修正\n`;
+            contextPrompt += `  例: 「議論が『具体的な解決策（How）』に偏っています。現在は『目的（Why）』を定義する時間ですので、視座を戻してください。」\n\n`;
           }
         } else {
           // ステップ未開始の場合（フェーズの最初など）
@@ -424,7 +427,15 @@ router.post('/next-turn', async (req, res) => {
         console.log(`   Q: ${userResponse.question.substring(0, 80)}...`);
         console.log(`   A: ${userResponse.answer.substring(0, 80)}...`);
         contextPrompt += `\n【ユーザーの回答】\n質問: ${userResponse.question}\n回答: ${userResponse.answer}\n\n`;
-        contextPrompt += `上記のユーザー回答を踏まえて、議論を続けてください。\n`;
+
+        // Facilitatorの場合は進行管理のみ、それ以外は議論を続ける
+        if (nextAgent === 'facilitator') {
+          contextPrompt += `上記のユーザー回答が得られました。あなたは議論の中身には介入せず、進行管理に徹してください。\n`;
+          contextPrompt += `- 2ターン監視: 議論が目的から逸脱していないか確認し、必要に応じて軌道修正\n`;
+          contextPrompt += `- ステップ完了判定: 見積もりターン到達時は完了判定を実施\n`;
+        } else {
+          contextPrompt += `上記のユーザー回答を踏まえて、議論を続けてください。\n`;
+        }
       }
 
       // Facilitatorの場合、計画書更新を促す
