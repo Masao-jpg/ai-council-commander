@@ -3,7 +3,7 @@ import CouncilSettings from './components/CouncilSettings';
 import DebateStream from './components/DebateStream';
 import ArtifactPanel from './components/ArtifactPanel';
 import ActionBar from './components/ActionBar';
-import type { DebateState, Message } from './types';
+import type { DebateState, Message, CouncilMode } from './types';
 
 function App() {
   const [debateState, setDebateState] = useState<DebateState>({
@@ -27,7 +27,7 @@ function App() {
     extensionCount: 0,
   });
 
-  const handleStartDebate = (theme: string, mode: 'brainstorm' | 'requirements' | 'implementation' | 'review', outputMode: 'implementation' | 'documentation') => {
+  const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation') => {
     const sessionId = `session_${Date.now()}`;
     setDebateState({
       sessionId,

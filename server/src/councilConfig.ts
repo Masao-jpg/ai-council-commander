@@ -3,7 +3,7 @@
 export type AgentRole = 'visionary' | 'analyst' | 'realist' | 'guardian' | 'moderator' | 'secretary';
 
 // モードタイプの定義
-export type CouncilMode = 'brainstorm' | 'requirements' | 'implementation' | 'review';
+export type CouncilMode = 'free' | 'brainstorm' | 'requirements' | 'implementation' | 'review';
 
 export interface ModeConfig {
   id: CouncilMode;
@@ -12,6 +12,7 @@ export interface ModeConfig {
   description: string;
   purpose: string;
   expectedOutcome: string;
+  usesStructuredPhases?: boolean; // フェーズ構造を使うか
 }
 
 export interface AgentConfig {
@@ -26,13 +27,23 @@ export interface AgentConfig {
 
 // モード設定
 export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
+  free: {
+    id: 'free',
+    name: 'Free',
+    nameJa: 'フリーモード',
+    description: 'フェーズに縛られず自由に議論',
+    purpose: 'エージェントが自律的に議論を進める',
+    expectedOutcome: '議論の流れに応じた柔軟な成果物',
+    usesStructuredPhases: false
+  },
   brainstorm: {
     id: 'brainstorm',
     name: 'Brainstorm',
     nameJa: '思考整理/壁打ちモード',
     description: '曖昧な状態からの具体化、視点の拡張',
     purpose: '多様な観点から検討事項の洗い出し、資料の骨子作成、作業段取りの提案',
-    expectedOutcome: '各種フレームワークや観点に沿って思考を整理したドキュメント'
+    expectedOutcome: '各種フレームワークや観点に沿って思考を整理したドキュメント',
+    usesStructuredPhases: true
   },
   requirements: {
     id: 'requirements',
@@ -40,7 +51,8 @@ export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
     nameJa: '要件検討モード',
     description: '上流工程の定義（あらゆるユースケースに対応）',
     purpose: 'ユーザーの要望を実現するための要件定義、プランニング',
-    expectedOutcome: '具体的な計画書、要件定義書、旅程表、献立プランなど'
+    expectedOutcome: '具体的な計画書、要件定義書、旅程表、献立プランなど',
+    usesStructuredPhases: true
   },
   implementation: {
     id: 'implementation',
@@ -48,7 +60,8 @@ export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
     nameJa: '実装モード',
     description: '定義された要件の具現化',
     purpose: '具体的な作業・制作を行う',
-    expectedOutcome: 'ソースコード、詳細レシピ、具体的な調達・購入手順書など'
+    expectedOutcome: 'ソースコード、詳細レシピ、具体的な調達・購入手順書など',
+    usesStructuredPhases: true
   },
   review: {
     id: 'review',
@@ -56,7 +69,8 @@ export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
     nameJa: 'テスト/レビューモード',
     description: '既存成果物の品質担保',
     purpose: '批判的思考による検証、改善案の提示',
-    expectedOutcome: 'レビューレポート、修正案、テスト結果報告書'
+    expectedOutcome: 'レビューレポート、修正案、テスト結果報告書',
+    usesStructuredPhases: true
   }
 };
 
@@ -69,6 +83,15 @@ export function getModeSpecificInstruction(mode: CouncilMode, phase: number): st
   instruction += `【目的】${modeConfig.purpose}\n`;
   instruction += `【期待される最終成果物】${modeConfig.expectedOutcome}\n`;
   instruction += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  // フリーモードの場合は特別な指示
+  if (mode === 'free') {
+    instruction += `【フリーモード】\n`;
+    instruction += `フェーズに縛られず、自由に議論してください。\n`;
+    instruction += `各エージェントは、自分の専門性を活かして自律的に発言してください。\n`;
+    instruction += `議論の流れに応じて、柔軟に方向性を調整してください。\n\n`;
+    return instruction;
+  }
 
   // フェーズ別の指示
   switch (phase) {
@@ -561,65 +584,88 @@ E) その他（自由記述）
   }
 };
 
-// 共通プロセスフロー（4段階）
-export const COMMON_PHASES: PhaseConfig[] = [
+// 新しい5フェーズ構造
+export const NEW_PHASES: PhaseConfig[] = [
   {
     phase: 1,
-    name: 'Hearing',
-    nameJa: 'ヒアリング（現状把握）',
-    purpose: 'ユーザーへの質問を通じた前提条件の整理',
-    totalTurns: 6,
+    name: 'Define',
+    nameJa: '情報収集',
+    purpose: '全体目的とセッションゴールの定義、客観・主観情報の収集',
+    totalTurns: 11,
     turnQuotas: {
-      analyst: 5,  // Analystが根掘り葉掘り聞く
+      visionary: 2,  // 全体目的・ビジョン
+      analyst: 3,    // 客観情報・データ収集
+      realist: 2,    // 制約条件の整理
+      guardian: 2,   // リスク・懸念事項
+      moderator: 1,  // プロジェクト憲章の作成
       secretary: 1
     }
   },
   {
     phase: 2,
-    name: 'Goal Setting',
-    nameJa: '目標・成果物定義',
-    purpose: '成果物のテンプレート・構造を明確に合意',
+    name: 'Develop',
+    nameJa: '発散',
+    purpose: 'ブレインストーミングとフレームワーク活用で可能性を拡張',
     totalTurns: 11,
     turnQuotas: {
-      visionary: 2,
-      analyst: 2,
-      realist: 2,
-      guardian: 2,
-      moderator: 2,  // Moderatorがテンプレートを提示
+      visionary: 3,  // アイデア発散・拡張
+      analyst: 2,    // フレームワーク活用
+      realist: 2,    // 実現可能性の視点
+      guardian: 2,   // リスクの視点
+      moderator: 1,  // 仮説シートの作成
       secretary: 1
     }
   },
   {
     phase: 3,
-    name: 'Creation',
-    nameJa: '成果物作成',
-    purpose: '適したエージェントが単独で集中して作成',
-    totalTurns: 8,
+    name: 'Structure',
+    nameJa: '構造化',
+    purpose: '評価基準に基づく方針決定と成果物の骨格設計',
+    totalTurns: 11,
     turnQuotas: {
-      // モード別に動的に設定（後述の関数で決定）
-      // 基本: 担当エージェント7回 + secretary 1回
+      visionary: 2,  // 方針の目的適合性
+      analyst: 3,    // 評価基準の設定
+      realist: 2,    // 実現可能性の評価
+      guardian: 2,   // リスク評価
+      moderator: 1,  // 骨子案の作成
+      secretary: 1
     }
   },
   {
     phase: 4,
-    name: 'Refinement',
-    nameJa: 'ブラッシュアップ',
-    purpose: '全エージェントで協力してブラッシュアップ',
+    name: 'Generate',
+    nameJa: '生成',
+    purpose: '骨子案に沿って本文を生成',
+    totalTurns: 8,
+    turnQuotas: {
+      // モード別に担当エージェントが7回 + secretary 1回
+    }
+  },
+  {
+    phase: 5,
+    name: 'Refine',
+    nameJa: '洗練',
+    purpose: '検証・修正を経て最終成果物パッケージを完成',
     totalTurns: 11,
     turnQuotas: {
-      visionary: 2,
-      analyst: 2,
-      realist: 2,
-      guardian: 2,
-      moderator: 2,
+      visionary: 2,  // 目的適合性の最終確認
+      analyst: 2,    // 論理性・整合性のチェック
+      realist: 2,    // 実行可能性の最終確認
+      guardian: 2,   // 品質・リスクの最終確認
+      moderator: 2,  // 成果物パッケージの完成
       secretary: 1
     }
   }
 ];
 
+// 後方互換性のため（既存コードが参照している場合）
+export const COMMON_PHASES = NEW_PHASES;
+
 // モード別の担当エージェントを決定
 export function getCreationAgent(mode: CouncilMode): AgentRole {
   switch (mode) {
+    case 'free':
+      return 'moderator';  // フリーモードはModeratorが適任
     case 'brainstorm':
       return 'visionary';  // 思考整理はVisionaryが適任
     case 'requirements':
@@ -652,5 +698,5 @@ export const DEBATE_PHASES = COMMON_PHASES;
 // 総ターン数
 export const TOTAL_TURNS = DEBATE_PHASES.reduce((sum, phase) => sum + phase.totalTurns, 0);
 
-// チェックポイント（フェーズ終了ターン）
-export const CHECKPOINTS = [6, 17, 25, 36];
+// チェックポイント（フェーズ終了ターン）- 新5フェーズ用
+export const CHECKPOINTS = [11, 22, 33, 41, 52];

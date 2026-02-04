@@ -2,7 +2,7 @@
 
 export type AgentRole = 'visionary' | 'analyst' | 'realist' | 'guardian' | 'moderator' | 'secretary';
 
-export type CouncilMode = 'brainstorm' | 'requirements' | 'implementation' | 'review';
+export type CouncilMode = 'free' | 'brainstorm' | 'requirements' | 'implementation' | 'review';
 
 export interface Message {
   agent: AgentRole;
@@ -58,6 +58,11 @@ export const AGENT_INFO: Record<AgentRole, { name: string; emoji: string; color:
 };
 
 export const MODE_INFO: Record<CouncilMode, { name: string; nameJa: string; description: string }> = {
+  free: {
+    name: 'Free',
+    nameJa: 'フリーモード',
+    description: 'フェーズに縛られず自由に議論'
+  },
   brainstorm: {
     name: 'Brainstorm',
     nameJa: '思考整理/壁打ちモード',
