@@ -201,17 +201,50 @@ router.post('/export-to-google-docs', async (req, res) => {
       }
     } else {
       // File path (recommended for both local and Render)
-      // Local: ./google-credentials.json (in server/ directory)
-      // Render: google-credentials.json (via Secret Files, created at root)
-      try {
-        await fs.access(credentialsEnv);
-        const credentialsContent = await fs.readFile(credentialsEnv, 'utf-8');
-        credentials = JSON.parse(credentialsContent);
-      } catch (error) {
+      // Try multiple possible paths
+      const possiblePaths = [
+        credentialsEnv, // User-specified path
+        path.resolve(credentialsEnv), // Absolute path from cwd
+        path.join(process.cwd(), credentialsEnv), // Relative to cwd
+        path.join('/etc/secrets', path.basename(credentialsEnv)) // Render secret files location
+      ];
+
+      let credentialsContent: string | null = null;
+      let successPath: string | null = null;
+      const triedPaths: string[] = [];
+
+      for (const testPath of possiblePaths) {
+        triedPaths.push(testPath);
+        try {
+          await fs.access(testPath);
+          credentialsContent = await fs.readFile(testPath, 'utf-8');
+          successPath = testPath;
+          console.log(`✓ Found credentials at: ${testPath}`);
+          break;
+        } catch (error) {
+          // Try next path
+          continue;
+        }
+      }
+
+      if (!credentialsContent || !successPath) {
         return res.status(500).json({
           error: 'Credentials file not found',
-          message: `File not found at: ${credentialsEnv}`,
-          hint: 'For Render: Make sure you created a Secret File with filename: google-credentials.json (no slashes)'
+          message: `Could not find credentials file`,
+          envValue: credentialsEnv,
+          cwd: process.cwd(),
+          triedPaths,
+          hint: 'For Render: Make sure you created a Secret File with filename: google-credentials.json'
+        });
+      }
+
+      try {
+        credentials = JSON.parse(credentialsContent);
+      } catch (parseError) {
+        return res.status(500).json({
+          error: 'Invalid JSON in credentials file',
+          message: 'The credentials file contains invalid JSON',
+          filePath: successPath
         });
       }
     }
@@ -413,6 +446,61 @@ router.post('/export-to-google-docs', async (req, res) => {
       error: error.message,
       details: error.response?.data || error.stack
     });
+  }
+});
+
+// Debug endpoint to check file system (temporary - remove in production)
+router.get('/debug-credentials', async (req, res) => {
+  try {
+    const cwd = process.cwd();
+    const envValue = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || 'NOT_SET';
+
+    const checkPaths = [
+      envValue,
+      path.resolve(envValue),
+      path.join(cwd, envValue),
+      '/etc/secrets/google-credentials.json',
+      path.join(cwd, 'google-credentials.json'),
+      path.join(cwd, 'server/google-credentials.json')
+    ];
+
+    const pathChecks = await Promise.all(
+      checkPaths.map(async (p) => {
+        try {
+          await fs.access(p);
+          const stats = await fs.stat(p);
+          return { path: p, exists: true, size: stats.size, isFile: stats.isFile() };
+        } catch (error) {
+          return { path: p, exists: false };
+        }
+      })
+    );
+
+    // Try to list /etc/secrets directory
+    let secretsDir: string[] = [];
+    try {
+      secretsDir = await fs.readdir('/etc/secrets');
+    } catch (error) {
+      secretsDir = ['Directory not accessible'];
+    }
+
+    // Try to list current working directory
+    let cwdFiles: string[] = [];
+    try {
+      cwdFiles = await fs.readdir(cwd);
+    } catch (error) {
+      cwdFiles = ['Directory not accessible'];
+    }
+
+    res.json({
+      cwd,
+      envValue,
+      pathChecks,
+      secretsDir,
+      cwdFiles: cwdFiles.slice(0, 20) // First 20 files only
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 
