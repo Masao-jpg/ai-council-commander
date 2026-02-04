@@ -124,7 +124,7 @@ export default function DebateStream({
     try {
       // Show loading state
       console.log('🔄 Requesting next turn...');
-      setCurrentAgent('moderator' as AgentRole); // Temporary loading indicator
+      setCurrentAgent('facilitator' as AgentRole); // Temporary loading indicator
 
       // Use immediate response if provided, otherwise get latest from state
       const latestUserResponse = immediateUserResponse || (userResponses.length > 0
@@ -318,7 +318,7 @@ export default function DebateStream({
     // If there's an image, add it as a user message
     if (imageUrl) {
       const userMessage: Message = {
-        agent: 'moderator' as AgentRole, // Use moderator to display user messages
+        agent: 'facilitator' as AgentRole, // Use facilitator to display user messages
         content: `ユーザーの回答: ${answer}`,
         timestamp: new Date(),
         imageUrl: imageUrl
@@ -505,36 +505,43 @@ export default function DebateStream({
           </div>
         )}
 
-        {messages.map((message, index) => (
-          <div key={index} className="flex gap-2 md:gap-3">
-            <div className={`w-1 md:w-2 rounded-full ${getAgentColor(message.agent)}`} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-2xl md:text-lg">{AGENT_INFO[message.agent].emoji}</span>
-                <span className="font-semibold text-base md:text-sm">
-                  {AGENT_INFO[message.agent].name}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {message.timestamp.toLocaleTimeString()}
-                </span>
-              </div>
-              <div className="text-base md:text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                {message.content}
-              </div>
-              {message.imageUrl && (
-                <div className="mt-2">
-                  <img
-                    src={message.imageUrl}
-                    alt="Uploaded image"
-                    className="max-w-full md:max-w-md rounded-lg border border-gray-600"
-                  />
+        {messages.map((message, index) => {
+          const agentInfo = AGENT_INFO[message.agent];
+          if (!agentInfo) {
+            console.error(`Unknown agent type: ${message.agent}`);
+            return null;
+          }
+          return (
+            <div key={index} className="flex gap-2 md:gap-3">
+              <div className={`w-1 md:w-2 rounded-full ${getAgentColor(message.agent)}`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-2xl md:text-lg">{agentInfo.emoji}</span>
+                  <span className="font-semibold text-base md:text-sm">
+                    {agentInfo.name}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {message.timestamp.toLocaleTimeString()}
+                  </span>
                 </div>
-              )}
+                <div className="text-base md:text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  {message.content}
+                </div>
+                {message.imageUrl && (
+                  <div className="mt-2">
+                    <img
+                      src={message.imageUrl}
+                      alt="Uploaded image"
+                      className="max-w-full md:max-w-md rounded-lg border border-gray-600"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {currentAgent && (
+        {currentAgent && AGENT_INFO[currentAgent] && (
           <div className="flex gap-3 opacity-60">
             <div className={`w-2 rounded-full ${getAgentColor(currentAgent)} animate-pulse`} />
             <div className="flex-1">

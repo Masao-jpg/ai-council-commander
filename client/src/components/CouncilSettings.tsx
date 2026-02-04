@@ -126,8 +126,8 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
                       className="hidden"
                       disabled={isDebating}
                     />
-                    <span className="text-lg md:text-base font-bold">P{phase}</span>
-                    <span className="text-xs text-gray-400 hidden md:block">{phaseNames[phase - 1]}</span>
+                    <span className="text-base md:text-sm font-bold mb-0.5">P{phase}</span>
+                    <span className="text-[10px] md:text-xs text-gray-400 text-center leading-tight">{phaseNames[phase - 1]}</span>
                   </label>
                 );
               })}
