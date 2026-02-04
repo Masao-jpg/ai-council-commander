@@ -33,6 +33,8 @@ interface DebateSession {
   turnsSinceLastFacilitator: number;  // 前回Facilitatorから何ターン経過したか
   stepExtended: boolean;  // このステップが既に延長されたかどうか
   proposedExtensionTurns: number;  // Facilitatorが提案した延長ターン数
+  autoProgress: boolean;  // バックグラウンド自動進行モード
+  lastUserQuestion: string;  // 最後にユーザーに投げた質問
 }
 
 const debateSessions = new Map<string, DebateSession>();
