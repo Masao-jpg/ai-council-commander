@@ -17,8 +17,12 @@ function App() {
     isDebating: false,
     currentPhase: 0,
     currentPhaseName: '',
+    currentStep: '',
+    currentStepName: '',
     currentTurn: 0,
     totalTurnsInPhase: 0,
+    estimatedStepTurns: 0,
+    actualStepTurns: 0,
     isWaitingForPhaseTransition: false,
     isWaitingForUserResponse: false,
     currentUserQuestion: '',
@@ -52,8 +56,12 @@ function App() {
       isDebating: true,
       currentPhase: initialPhase.phase,
       currentPhaseName: initialPhase.nameJa,
+      currentStep: '',
+      currentStepName: '',
       currentTurn: 0,
       totalTurnsInPhase: initialPhase.totalTurns,
+      estimatedStepTurns: 0,
+      actualStepTurns: 0,
       isWaitingForPhaseTransition: false,
       isWaitingForUserResponse: false,
       currentUserQuestion: '',
@@ -105,13 +113,26 @@ function App() {
     }));
   };
 
-  const updatePhaseInfo = (phase: number, phaseName: string, turn: number, totalTurns: number) => {
+  const updatePhaseInfo = (
+    phase: number,
+    phaseName: string,
+    turn: number,
+    totalTurns: number,
+    step?: string,
+    stepName?: string,
+    estimatedStepTurns?: number,
+    actualStepTurns?: number
+  ) => {
     setDebateState(prev => ({
       ...prev,
       currentPhase: phase,
       currentPhaseName: phaseName,
+      currentStep: step || prev.currentStep,
+      currentStepName: stepName || prev.currentStepName,
       currentTurn: turn,
       totalTurnsInPhase: totalTurns,
+      estimatedStepTurns: estimatedStepTurns !== undefined ? estimatedStepTurns : prev.estimatedStepTurns,
+      actualStepTurns: actualStepTurns !== undefined ? actualStepTurns : prev.actualStepTurns,
     }));
   };
 
@@ -140,18 +161,34 @@ function App() {
             <span className="text-gray-500 text-xs md:text-sm ml-2">v3.1.0</span>
           </h1>
 
-          {/* Phase Indicator - Mobile Compact */}
+          {/* Phase & Step Indicator - Mobile Optimized */}
           {debateState.isDebating && (
-            <div className="flex items-center gap-2 text-xs md:text-sm">
-              <div className="bg-gray-700 px-2 py-1 md:px-4 md:py-2 rounded">
-                <span className="text-gray-400">P{debateState.currentPhase}</span>
-                <span className="text-white ml-1 font-semibold hidden md:inline">{debateState.currentPhaseName}</span>
+            <div className="flex flex-col items-end gap-1 text-xs">
+              {/* Phase info - Always visible */}
+              <div className="flex items-center gap-1.5">
+                <div className="bg-gray-700 px-2 py-1 rounded flex items-center gap-1">
+                  <span className="text-gray-400">P{debateState.currentPhase}</span>
+                  <span className="text-white font-semibold">{debateState.currentPhaseName}</span>
+                </div>
+                <div className="bg-gray-700 px-2 py-1 rounded">
+                  <span className="text-white font-semibold">
+                    {debateState.currentTurn}T
+                  </span>
+                </div>
               </div>
-              <div className="bg-gray-700 px-2 py-1 md:px-4 md:py-2 rounded">
-                <span className="text-white font-semibold">
-                  {debateState.currentTurn}/{debateState.totalTurnsInPhase}
-                </span>
-              </div>
+
+              {/* Step info - Shown when available */}
+              {debateState.currentStep && (
+                <div className="bg-blue-900 bg-opacity-50 px-2 py-1 rounded border border-blue-700 flex items-center gap-1">
+                  <span className="text-blue-300 font-semibold">{debateState.currentStep}</span>
+                  <span className="text-white text-xs">{debateState.currentStepName}</span>
+                  {debateState.estimatedStepTurns > 0 && (
+                    <span className="text-blue-300 ml-1">
+                      ({debateState.actualStepTurns}/{debateState.estimatedStepTurns})
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

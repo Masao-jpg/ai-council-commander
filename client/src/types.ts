@@ -1,6 +1,13 @@
 // Type definitions for AI Council Commander
 
-export type AgentRole = 'visionary' | 'analyst' | 'realist' | 'guardian' | 'moderator' | 'secretary';
+export type AgentRole =
+  | 'facilitator'                  // 指揮者
+  | 'futurePotentialSeeker'        // 発展可能性の探求者
+  | 'constraintChecker'            // 制約条件の確認者
+  | 'logicalConsistencyChecker'    // 論理整合性の検証者
+  | 'userValueAdvocate'            // ユーザー価値の代弁者
+  | 'innovationCatalyst'           // 革新性の推進者
+  | 'constructiveCritic';          // 建設的批評家
 
 export type CouncilMode = 'free' | 'define' | 'develop' | 'structure' | 'generate' | 'refine';
 
@@ -19,12 +26,19 @@ export interface UserResponse {
   timestamp: Date;
 }
 
+export interface StepInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface PhaseInfo {
   phase: number;
   name: string;
   nameJa: string;
   purpose: string;
   totalTurns: number;
+  steps?: StepInfo[];
 }
 
 export interface DebateState {
@@ -38,8 +52,12 @@ export interface DebateState {
   isDebating: boolean;
   currentPhase: number;
   currentPhaseName: string;
+  currentStep: string;  // 現在のステップ (例: "1-1", "2-3")
+  currentStepName: string;  // 現在のステップ名 (例: "全体目的 (Why)")
   currentTurn: number;
   totalTurnsInPhase: number;
+  estimatedStepTurns: number;  // Facilitatorの見積もりターン数
+  actualStepTurns: number;  // 実際の議論ターン数（Facilitatorを除く）
   isWaitingForPhaseTransition: boolean;
   isWaitingForUserResponse: boolean;
   currentUserQuestion: string;
@@ -49,12 +67,13 @@ export interface DebateState {
 }
 
 export const AGENT_INFO: Record<AgentRole, { name: string; emoji: string; color: string; role: string }> = {
-  visionary: { name: 'Visionary', emoji: '🔵', color: 'blue', role: '起案・情熱' },
-  analyst: { name: 'Analyst', emoji: '⚪', color: 'gray', role: '分析・根拠' },
-  realist: { name: 'Realist', emoji: '🟠', color: 'orange', role: '現実・兵站' },
-  guardian: { name: 'Guardian', emoji: '🔴', color: 'red', role: '安全・リスク' },
-  moderator: { name: 'Moderator', emoji: '🟢', color: 'green', role: '書記・進行' },
-  secretary: { name: 'Secretary', emoji: '📝', color: 'purple', role: '議事メモ係' }
+  facilitator: { name: 'Facilitator', emoji: '⚪', color: 'white', role: '指揮者・進行管理' },
+  futurePotentialSeeker: { name: 'FuturePotentialSeeker', emoji: '🔵', color: 'blue', role: '発展可能性の探求者' },
+  constraintChecker: { name: 'ConstraintChecker', emoji: '🟠', color: 'orange', role: '制約条件の確認者' },
+  logicalConsistencyChecker: { name: 'LogicalConsistencyChecker', emoji: '⚫', color: 'gray', role: '論理整合性の検証者' },
+  userValueAdvocate: { name: 'UserValueAdvocate', emoji: '🟢', color: 'green', role: 'ユーザー価値の代弁者' },
+  innovationCatalyst: { name: 'InnovationCatalyst', emoji: '🔴', color: 'red', role: '革新性の推進者' },
+  constructiveCritic: { name: 'ConstructiveCritic', emoji: '🟡', color: 'yellow', role: '建設的批評家' }
 };
 
 export const MODE_INFO: Record<CouncilMode, { name: string; nameJa: string; description: string }> = {

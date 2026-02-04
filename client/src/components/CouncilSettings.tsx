@@ -104,7 +104,7 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
         {mode !== 'free' && (
           <div>
             <label className="block text-base md:text-xs font-medium mb-2 text-gray-300">
-              開始フェーズ
+              開始ステップ
             </label>
             <div className="grid grid-cols-5 gap-1.5 md:gap-2">
               {[1, 2, 3, 4, 5].map((phase) => {

@@ -53,7 +53,13 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
       console.log('Download plan started', { planLength: plan.length, theme, platform: Capacitor.getPlatform() });
 
       const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `${theme || 'AI-Council'}_${timestamp}.md`;
+      // Ensure theme is short and safe for filename (max 30 chars)
+      const safeTheme = (theme || 'AI-Council')
+        .substring(0, 30)
+        .replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      const filename = `${safeTheme}_${timestamp}.md`;
 
       // Check if running on native platform (Android/iOS)
       if (Capacitor.isNativePlatform()) {
@@ -111,7 +117,13 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
       console.log('Download memo started', { memoLength: memo.length, theme, platform: Capacitor.getPlatform() });
 
       const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `${theme || 'AI-Council'}_MEMO_${timestamp}.md`;
+      // Ensure theme is short and safe for filename (max 30 chars)
+      const safeTheme = (theme || 'AI-Council')
+        .substring(0, 30)
+        .replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      const filename = `${safeTheme}_MEMO_${timestamp}.md`;
 
       // Check if running on native platform (Android/iOS)
       if (Capacitor.isNativePlatform()) {

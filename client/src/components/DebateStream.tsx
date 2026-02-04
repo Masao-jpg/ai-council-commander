@@ -23,7 +23,16 @@ interface DebateStreamProps {
   onUserResponse: (question: string, answer: string) => void;
   onPlanUpdate: (plan: string) => void;
   onMemoUpdate: (memo: string) => void;
-  onPhaseInfoUpdate: (phase: number, phaseName: string, turn: number, totalTurns: number) => void;
+  onPhaseInfoUpdate: (
+    phase: number,
+    phaseName: string,
+    turn: number,
+    totalTurns: number,
+    step?: string,
+    stepName?: string,
+    estimatedStepTurns?: number,
+    actualStepTurns?: number
+  ) => void;
   onWaitingForPhaseTransition: (waiting: boolean) => void;
   onPhaseInstruction: (phase: number, instruction: string) => void;
   onDebateEnd: () => void;
@@ -53,6 +62,8 @@ export default function DebateStream({
 }: DebateStreamProps) {
   const [currentAgent, setCurrentAgent] = useState<AgentRole | null>(null);
   const [nextPhaseName, setNextPhaseName] = useState('');
+  const [isWaitingForExtensionJudgment, setIsWaitingForExtensionJudgment] = useState(false);
+  const [extensionStepInfo, setExtensionStepInfo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDebatingRef = useRef(isDebating);
   const isWaitingRef = useRef(isWaitingForPhaseTransition);
@@ -210,12 +221,48 @@ export default function DebateStream({
         onMemoUpdate(data.memoUpdate);
       }
 
-      // Update phase info
+      // Handle step updates from Facilitator
+      if (data.stepUpdate) {
+        console.log('🎯 Step update detected:', data.stepUpdate);
+
+        if (data.stepUpdate.type === 'start') {
+          // Step started
+          console.log(`▶️ Step ${data.stepUpdate.step} started: ${data.stepUpdate.stepName} (${data.stepUpdate.estimatedTurns} turns)`);
+        } else if (data.stepUpdate.type === 'completed') {
+          // Step completed
+          console.log(`✅ Step ${data.stepUpdate.step} completed: ${data.stepUpdate.stepName}`);
+        } else if (data.stepUpdate.type === 'extension_needed') {
+          // Extension judgment needed
+          console.log(`⏰ Step ${data.stepUpdate.step} needs extension judgment`);
+        }
+      }
+
+      // Check for extension judgment needed
+      if (data.needsExtensionJudgment) {
+        console.log('⏸️ Extension judgment needed, waiting for user decision...');
+        setIsWaitingForExtensionJudgment(true);
+        setExtensionStepInfo(data.stepUpdate);
+        setCurrentAgent(null);
+        return; // Stop and wait for user decision
+      }
+
+      // Check for phase completion (triggered by Facilitator keyword)
+      if (data.phaseCompleted) {
+        console.log('🏁 Phase completed by Facilitator, transitioning...');
+        onWaitingForPhaseTransition(true);
+        return;
+      }
+
+      // Update phase info (including step info and turn counts)
       onPhaseInfoUpdate(
         data.phase,
         data.phaseName,
         data.turn,
-        data.totalTurnsInPhase
+        data.totalTurnsInPhase,
+        data.currentStep,
+        data.currentStepName,
+        data.estimatedStepTurns,
+        data.actualStepTurns
       );
 
       setCurrentAgent(null);
@@ -333,6 +380,35 @@ export default function DebateStream({
     }
   };
 
+  const handleStepExtensionJudgment = async (extend: boolean) => {
+    console.log(`🎯 User decided to ${extend ? 'extend' : 'complete'} step`);
+
+    try {
+      const response = await fetch(getApiUrl('/api/debate/step-extension-judgment'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, extend }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`✅ Step extension judgment processed: ${data.action}`);
+
+        // Reset extension judgment flag
+        setIsWaitingForExtensionJudgment(false);
+        setExtensionStepInfo(null);
+
+        // Continue debate
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await runNextTurn();
+      }
+    } catch (error) {
+      console.error('❌ Error handling step extension judgment:', error);
+      alert(`ステップ延長判断エラー: ${error}`);
+    }
+  };
+
   const handleContinueToNextPhase = async () => {
     console.log('🚀 User clicked "Continue to Next Phase" button');
     console.log('Current state:', { isDebating, isWaitingForPhaseTransition, currentPhase });
@@ -386,14 +462,15 @@ export default function DebateStream({
 
   const getAgentColor = (agent: AgentRole): string => {
     const colors: Record<AgentRole, string> = {
-      visionary: 'bg-blue-500',
-      analyst: 'bg-gray-500',
-      realist: 'bg-orange-500',
-      guardian: 'bg-red-500',
-      moderator: 'bg-green-500',
-      secretary: 'bg-purple-500',
+      facilitator: 'bg-white',
+      futurePotentialSeeker: 'bg-blue-500',
+      constraintChecker: 'bg-orange-500',
+      logicalConsistencyChecker: 'bg-gray-500',
+      userValueAdvocate: 'bg-green-500',
+      innovationCatalyst: 'bg-red-500',
+      constructiveCritic: 'bg-yellow-500',
     };
-    return colors[agent];
+    return colors[agent] || 'bg-gray-500';
   };
 
   return (
@@ -484,8 +561,46 @@ export default function DebateStream({
           />
         )}
 
+        {/* Step Extension Judgment */}
+        {isWaitingForExtensionJudgment && extensionStepInfo && (
+          <div className="bg-yellow-900 bg-opacity-30 border-2 border-yellow-500 rounded-lg p-4 md:p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">⏰</span>
+              <h3 className="text-lg font-bold text-yellow-300">ステップ延長の判断</h3>
+            </div>
+            <div className="text-sm text-gray-300 mb-4 space-y-2">
+              <p>
+                <strong>現在のステップ:</strong> {extensionStepInfo.step} - {extensionStepInfo.stepName}
+              </p>
+              <p>
+                <strong>見積もりターン数:</strong> {extensionStepInfo.estimatedTurns}ターン
+              </p>
+              <p>
+                <strong>実際のターン数:</strong> {extensionStepInfo.actualTurns}ターン
+              </p>
+              <p className="text-yellow-200">
+                Facilitatorがステップの延長が必要と判断しました。追加の議論を行いますか？
+              </p>
+            </div>
+            <div className="flex flex-col md:flex-row gap-3">
+              <button
+                onClick={() => handleStepExtensionJudgment(true)}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors"
+              >
+                A) 延長する
+              </button>
+              <button
+                onClick={() => handleStepExtensionJudgment(false)}
+                className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                B) このまま完了とする
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Checkpoint UI with Phase Instruction */}
-        {isWaitingForPhaseTransition && !isWaitingForUserResponse && (
+        {isWaitingForPhaseTransition && !isWaitingForUserResponse && !isWaitingForExtensionJudgment && (
           <PhaseInstructionBox
             currentPhase={currentPhase}
             nextPhaseName={nextPhaseName}
