@@ -262,6 +262,13 @@ router.post('/export-to-google-docs', async (req, res) => {
       }
     }
 
+    // Log service account info for debugging
+    console.log('Using service account:', {
+      email: credentials.client_email,
+      projectId: credentials.project_id,
+      hasPrivateKey: !!credentials.private_key
+    });
+
     // Initialize Google Auth
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -455,6 +462,24 @@ router.post('/export-to-google-docs', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Error exporting to Google Docs:', error);
+
+    // Check if it's a permission error
+    if (error.code === 403 || error.status === 403) {
+      return res.status(500).json({
+        error: 'Google API Permission Denied',
+        message: 'サービスアカウントにGoogle Docs/Drive APIの権限がありません',
+        troubleshooting: {
+          step1: 'Google Cloud Consoleにアクセス: https://console.cloud.google.com',
+          step2: '正しいプロジェクトが選択されているか確認',
+          step3: '「APIとサービス」→「ライブラリ」で以下を有効化:',
+          apis: ['Google Docs API', 'Google Drive API'],
+          step4: '「APIとサービス」→「認証情報」でサービスアカウントを確認',
+          step5: '新しいJSON鍵を作成してRenderのSecret Filesを更新'
+        },
+        details: error.response?.data || error.message
+      });
+    }
+
     res.status(500).json({
       error: error.message,
       details: error.response?.data || error.stack
