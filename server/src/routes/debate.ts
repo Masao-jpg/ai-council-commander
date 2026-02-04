@@ -31,6 +31,8 @@ interface DebateSession {
   estimatedStepTurns: number;  // Facilitator's estimated turns for current step
   actualStepTurns: number;  // Actual turns completed in current step (Facilitatorを除く)
   turnsSinceLastFacilitator: number;  // 前回Facilitatorから何ターン経過したか
+  stepExtended: boolean;  // このステップが既に延長されたかどうか
+  proposedExtensionTurns: number;  // Facilitatorが提案した延長ターン数
 }
 
 const debateSessions = new Map<string, DebateSession>();
@@ -75,8 +77,16 @@ function detectStepCompleted(text: string): { stepNumber: string; stepName: stri
   return null;
 }
 
-function detectStepExtensionNeeded(text: string): boolean {
-  return text.includes('---STEP_EXTENSION_NEEDED---');
+function detectStepExtensionNeeded(text: string): { needed: boolean; additionalTurns: number } {
+  if (!text.includes('---STEP_EXTENSION_NEEDED---')) {
+    return { needed: false, additionalTurns: 0 };
+  }
+
+  // 追加ターン数を抽出（例: "追加で【 3 ターン 】"）
+  const turnsMatch = text.match(/追加で?【\s*(\d+)\s*ターン\s*】/);
+  const additionalTurns = turnsMatch ? parseInt(turnsMatch[1], 10) : 3; // デフォルト3ターン
+
+  return { needed: true, additionalTurns };
 }
 
 function detectPhaseCompleted(text: string, currentPhase: number): boolean {
@@ -232,7 +242,9 @@ router.post('/start', async (req, res) => {
       currentStepName: '',
       estimatedStepTurns: 0,
       actualStepTurns: 0,
-      turnsSinceLastFacilitator: 0
+      turnsSinceLastFacilitator: 0,
+      stepExtended: false,
+      proposedExtensionTurns: 0
     };
 
     debateSessions.set(sessionId, session);
@@ -267,6 +279,25 @@ router.post('/next-turn', async (req, res) => {
     if (!session) {
       console.error(`❌ Session not found: ${sessionId}`);
       return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // ユーザーの回答を履歴に追加（記憶喪失バグの修正）
+    if (userResponse) {
+      console.log(`💾 Saving user response to history...`);
+      session.history.push({
+        agent: 'facilitator' as AgentRole, // Userの回答もFacilitatorとして記録
+        content: `【ユーザーの回答】\n質問: ${userResponse.question}\n回答: ${userResponse.answer}`
+      });
+
+      // 延長承認の処理
+      if (userResponse.question.includes('延長') && userResponse.answer.trim().toUpperCase() === 'A') {
+        if (session.proposedExtensionTurns > 0 && !session.stepExtended) {
+          console.log(`✅ User approved extension: adding ${session.proposedExtensionTurns} turns to estimate`);
+          session.estimatedStepTurns += session.proposedExtensionTurns;
+          session.stepExtended = true;
+          console.log(`📊 New estimated turns: ${session.estimatedStepTurns}`);
+        }
+      }
     }
 
     // デッキから次の発言者を取得
@@ -327,11 +358,24 @@ router.post('/next-turn', async (req, res) => {
           contextPrompt += `見積もりターン数: ${session.estimatedStepTurns}ターン\n`;
           contextPrompt += `実際の経過ターン数: ${session.actualStepTurns}ターン（メンバーの議論ターン）\n`;
 
+          // 延長状態の表示
+          if (session.stepExtended) {
+            contextPrompt += `延長状態: ✅ このステップは既に延長されています（延長は1回まで）\n`;
+          }
+
           // 見積もりターン到達チェック
           if (session.actualStepTurns >= session.estimatedStepTurns) {
             contextPrompt += `\n🔔 **重要**: 見積もりターン数に到達しました。ステップ完了判定を行ってください。\n`;
-            contextPrompt += `- 成果物が十分に定義できている → ---STEP_COMPLETED--- を宣言\n`;
-            contextPrompt += `- まだ不足がある → ---STEP_EXTENSION_NEEDED--- を宣言し、不足点と追加ターン数を提示\n\n`;
+
+            if (session.stepExtended) {
+              // 既に延長済みの場合は完了のみ
+              contextPrompt += `⚠️ このステップは既に延長されています。**必ず** ---STEP_COMPLETED--- を宣言してください。\n`;
+              contextPrompt += `（延長は1回までです。2回目の延長は禁止されています）\n\n`;
+            } else {
+              // 初回の場合は延長可能
+              contextPrompt += `- 成果物が十分に定義できている → ---STEP_COMPLETED--- を宣言\n`;
+              contextPrompt += `- まだ不足がある → ---STEP_EXTENSION_NEEDED--- を宣言し、不足点と追加ターン数を提示\n\n`;
+            }
           } else {
             const remaining = session.estimatedStepTurns - session.actualStepTurns;
             contextPrompt += `残りターン数: ${remaining}ターン\n\n`;
@@ -411,6 +455,8 @@ router.post('/next-turn', async (req, res) => {
         session.currentStepName = stepStart.stepName;
         session.estimatedStepTurns = stepStart.estimatedTurns;
         session.actualStepTurns = 0;
+        session.stepExtended = false; // 新しいステップなので延長フラグをリセット
+        session.proposedExtensionTurns = 0;
         stepUpdate = {
           type: 'start',
           step: stepStart.stepNumber,
@@ -433,11 +479,18 @@ router.post('/next-turn', async (req, res) => {
         session.currentStepName = '';
         session.estimatedStepTurns = 0;
         session.actualStepTurns = 0;
+        session.stepExtended = false;
+        session.proposedExtensionTurns = 0;
       }
 
       // STEP_EXTENSION_NEEDED検出
-      if (detectStepExtensionNeeded(text)) {
-        console.log(`⏰ STEP_EXTENSION_NEEDED detected for step ${session.currentStep}`);
+      const extensionInfo = detectStepExtensionNeeded(text);
+      if (extensionInfo.needed) {
+        console.log(`⏰ STEP_EXTENSION_NEEDED detected for step ${session.currentStep}, proposed additional turns: ${extensionInfo.additionalTurns}`);
+
+        // 延長提案を保存
+        session.proposedExtensionTurns = extensionInfo.additionalTurns;
+
         needsExtensionJudgment = true;
         stepUpdate = {
           type: 'extension_needed',
