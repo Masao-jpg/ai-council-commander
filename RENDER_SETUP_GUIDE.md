@@ -53,8 +53,8 @@
 2. 左メニューから **「Secret Files」** をクリック
 3. **「Add Secret File」** をクリック
 4. 以下のように設定：
-   - **Filename:** `server/google-credentials.json`
-     - ⚠️ **重要:** フォルダ名 `server/` を含めること！
+   - **Filename:** `google-credentials.json`
+     - ⚠️ **注意:** スラッシュ（`/`）は使用できません
    - **File Content:** ダウンロードしたJSONファイルの中身を全てコピペ
      ```json
      {
@@ -77,14 +77,14 @@
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Google Drive連携（オプション）
-GOOGLE_SERVICE_ACCOUNT_KEY=server/google-credentials.json
+GOOGLE_SERVICE_ACCOUNT_KEY=google-credentials.json
 GOOGLE_DRIVE_FOLDER_ID=your_folder_id_here
 
 # その他
 PORT=3001
 ```
 
-3. **⚠️ 最重要：** `GOOGLE_SERVICE_ACCOUNT_KEY` の値は **`server/google-credentials.json`** （ファイルパス）
+3. **⚠️ 最重要：** `GOOGLE_SERVICE_ACCOUNT_KEY` の値は **`google-credentials.json`** （ファイルパス）
    - ❌ **間違い:** JSON文字列を直接入れる
    - ✅ **正しい:** ファイルパスを入れる
 
@@ -120,7 +120,7 @@ PORT=3001
 **原因:** Secret Filesでファイルが正しく作成されていない
 
 **解決策:**
-1. Secret Filesのファイル名が **`server/google-credentials.json`** になっているか確認
+1. Secret Filesのファイル名が **`google-credentials.json`** になっているか確認
 2. ファイル内容が正しいJSONかチェック（カッコの欠けや改行の問題など）
 3. 再度保存して再デプロイ
 
@@ -166,12 +166,12 @@ PORT=3001
 ## まとめ
 
 ✅ **Renderでの正しい設定:**
-1. **Secret Files**: `server/google-credentials.json` にJSON内容を保存
-2. **Environment Variables**: `GOOGLE_SERVICE_ACCOUNT_KEY=server/google-credentials.json` と設定
+1. **Secret Files**: `google-credentials.json` にJSON内容を保存
+2. **Environment Variables**: `GOOGLE_SERVICE_ACCOUNT_KEY=google-credentials.json` と設定
 
 ❌ **よくある間違い:**
 - 環境変数にJSON文字列を直接入れる
-- ファイル名に `server/` を含めない
+- ファイル名にスラッシュ（`/`）を含める
 - サービスアカウントとフォルダを共有し忘れる
 
 ---

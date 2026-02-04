@@ -81,13 +81,13 @@ To enable Google Docs export functionality:
    **Step 1: Create Secret File**
    - Go to Render Dashboard > Your Service > "Secret Files"
    - Click "Add Secret File"
-   - Filename: `server/google-credentials.json`
+   - Filename: `google-credentials.json` (no slashes allowed)
    - File Content: Paste the entire JSON content from your credentials file
    - Save
 
    **Step 2: Set Environment Variables**
    - Go to "Environment" section
-   - Set `GOOGLE_SERVICE_ACCOUNT_KEY=server/google-credentials.json` (file path, not JSON content)
+   - Set `GOOGLE_SERVICE_ACCOUNT_KEY=google-credentials.json` (file path, not JSON content)
    - Set `GOOGLE_DRIVE_FOLDER_ID=your_folder_id_here`
    - Save Changes
 
