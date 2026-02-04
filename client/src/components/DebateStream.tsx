@@ -198,17 +198,33 @@ export default function DebateStream({
       console.log('🔍 Checking for user question in FULL content (length:', data.content.length, 'chars)');
       console.log('🔍 Contains USER_QUESTION marker:', data.content.includes('---USER_QUESTION---'));
 
-      // 全文から質問マーカーを検出
-      const userQuestionMatch = data.content.match(/---USER_QUESTION---([\s\S]*?)---USER_QUESTION---/);
-      const hasUserQuestion = userQuestionMatch !== null;
-      const userQuestion = userQuestionMatch ? userQuestionMatch[1].trim() : '';
+      // 質問マーカーを検出（柔軟なロジック）
+      let hasUserQuestion = false;
+      let userQuestion = '';
+
+      if (data.content.includes('---USER_QUESTION---')) {
+        // まず、開始タグと終了タグの両方がある正しい形式を試す
+        const matchWithClosingTag = data.content.match(/---USER_QUESTION---([\s\S]*?)---USER_QUESTION---/);
+
+        if (matchWithClosingTag) {
+          // 正しい形式で検出成功
+          userQuestion = matchWithClosingTag[1].trim();
+          hasUserQuestion = true;
+          console.log('✅ User question detected with closing tag');
+        } else {
+          // 終了タグがない場合: 開始タグ以降の全文を質問とする（柔軟な検出）
+          const parts = data.content.split('---USER_QUESTION---');
+          if (parts.length > 1) {
+            userQuestion = parts[parts.length - 1].trim();
+            hasUserQuestion = userQuestion.length > 0;
+            console.log('✅ User question detected WITHOUT closing tag (flexible mode)');
+          }
+        }
+      }
 
       if (hasUserQuestion) {
-        console.log(`✅ User question detected! Question length: ${userQuestion.length} chars`);
+        console.log(`✅ User question extracted! Question length: ${userQuestion.length} chars`);
         console.log(`📋 Question full text: "${userQuestion}"`);
-      } else if (data.content.includes('---USER_QUESTION---')) {
-        console.warn('⚠️ Found USER_QUESTION marker but regex did not match!');
-        console.warn('Content preview:', data.content.substring(0, 500));
       } else {
         console.log('ℹ️ No user question in this turn');
       }
