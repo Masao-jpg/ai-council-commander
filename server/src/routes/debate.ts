@@ -306,11 +306,12 @@ router.post('/next-turn', async (req, res) => {
 
     // デッキから次の発言者を取得
     if (session.speakerDeck.length === 0) {
-      console.log(`⏸️ Phase ${session.currentPhase} complete, needs transition`);
-      return res.status(400).json({
-        error: 'No more speakers in current phase',
-        needsPhaseTransition: true
-      });
+      console.log(`⚠️ Speaker deck empty, but phase continues until Facilitator declares PHASE_COMPLETED`);
+
+      // デッキが空になっても、Facilitatorが正式にPHASE_COMPLETEDを宣言するまでフェーズは続行
+      // Facilitatorを追加して、次のステップ開始またはフェーズ完了を促す
+      session.speakerDeck.push('facilitator');
+      console.log(`✅ Added Facilitator to deck to continue phase management`);
     }
 
     const nextAgent = session.speakerDeck.shift()!;
@@ -358,6 +359,9 @@ router.post('/next-turn', async (req, res) => {
 
         // ステップ進行中の場合
         if (session.currentStep) {
+          console.log(`📍 Current step: ${session.currentStep} - ${session.currentStepName}`);
+          console.log(`📊 Step progress: ${session.actualStepTurns}/${session.estimatedStepTurns} turns (extended: ${session.stepExtended})`);
+
           contextPrompt += `現在のステップ: ${session.currentStep} - ${session.currentStepName}\n`;
           contextPrompt += `見積もりターン数: ${session.estimatedStepTurns}ターン\n`;
           contextPrompt += `実際の経過ターン数: ${session.actualStepTurns}ターン（メンバーの議論ターン）\n`;
@@ -465,6 +469,8 @@ router.post('/next-turn', async (req, res) => {
     let stepUpdate = null;
     let needsExtensionJudgment = false;
     let phaseCompleted = false;
+    let stepCompleted = false;
+    let completedStepInfo: { stepNumber: string; stepName: string } | null = null;
 
     if (nextAgent === 'facilitator') {
       // STEP_START検出
@@ -485,16 +491,14 @@ router.post('/next-turn', async (req, res) => {
         };
       }
 
-      // STEP_COMPLETED検出
-      const stepCompleted = detectStepCompleted(text);
-      if (stepCompleted) {
-        console.log(`✅ STEP_COMPLETED detected: ${stepCompleted.stepNumber} - ${stepCompleted.stepName}`);
+      // STEP_COMPLETED検出（PHASE_COMPLETEDと同じパターンで処理）
+      const stepCompletedResult = detectStepCompleted(text);
+      if (stepCompletedResult) {
+        console.log(`✅ STEP_COMPLETED detected: ${stepCompletedResult.stepNumber} - ${stepCompletedResult.stepName}`);
 
-        // Add completion message to history
-        session.history.push({
-          agent: nextAgent,
-          content: text
-        });
+        // フラグを立てて、通常のレスポンスとして返す
+        stepCompleted = true;
+        completedStepInfo = stepCompletedResult;
 
         // Reset step counters for next step
         session.currentStep = '';
@@ -503,15 +507,6 @@ router.post('/next-turn', async (req, res) => {
         session.actualStepTurns = 0;
         session.stepExtended = false;
         session.proposedExtensionTurns = 0;
-
-        // Return step transition signal (same pattern as phase completion)
-        console.log(`⏸️ Step ${stepCompleted.stepNumber} complete, needs transition`);
-        return res.status(400).json({
-          error: 'Step completed',
-          needsStepTransition: true,
-          completedStep: stepCompleted.stepNumber,
-          completedStepName: stepCompleted.stepName
-        });
       }
 
       // STEP_EXTENSION_NEEDED検出
@@ -581,6 +576,9 @@ router.post('/next-turn', async (req, res) => {
       stepUpdate,
       needsExtensionJudgment,
       phaseCompleted,
+      stepCompleted,
+      completedStep: completedStepInfo?.stepNumber || '',
+      completedStepName: completedStepInfo?.stepName || '',
       turn: session.currentTurn,
       phase: session.currentPhase,
       phaseName: currentPhase.nameJa,

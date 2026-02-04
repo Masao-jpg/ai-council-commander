@@ -176,14 +176,6 @@ export default function DebateStream({
         return;
       }
 
-      // Check for step transition (same pattern as phase transition)
-      if (data.needsStepTransition) {
-        console.log('⏸️ Step complete, waiting for user');
-        setCurrentAgent(null);
-        onWaitingForStepTransition(true, data.completedStep, data.completedStepName);
-        return;
-      }
-
       if (!response.ok) {
         throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
@@ -309,6 +301,14 @@ export default function DebateStream({
         setExtensionStepInfo(data.stepUpdate);
         setCurrentAgent(null);
         return; // Stop and wait for user decision
+      }
+
+      // Check for step completion (triggered by Facilitator keyword)
+      if (data.stepCompleted) {
+        console.log('🎉 Step completed by Facilitator, showing completion UI...');
+        setCurrentAgent(null);
+        onWaitingForStepTransition(true, data.completedStep, data.completedStepName);
+        return;
       }
 
       // Check for phase completion (triggered by Facilitator keyword)
