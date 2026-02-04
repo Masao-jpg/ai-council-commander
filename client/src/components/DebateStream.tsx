@@ -280,9 +280,24 @@ export default function DebateStream({
             // Add a special message to display step completion
             onMessage({
               agent: 'facilitator',
-              content: `[STEP_COMPLETED]\n✅ ステップ ${data.stepUpdate.step}（${data.stepUpdate.stepName}）が完了しました！`,
+              content: `[STEP_COMPLETED]\n✅ ステップ ${data.stepUpdate.step}（${data.stepUpdate.stepName}）が完了しました！\n\n次のステップに進みます...`,
               timestamp: new Date()
             });
+            // Pause for step completion ceremony (like phase completion)
+            console.log('🎊 Step completion ceremony - pausing before next step');
+            setCurrentAgent(null);
+
+            // Wait a moment for the message to display, then continue (or wait for user if manual mode)
+            if (autoProgress) {
+              setTimeout(() => {
+                console.log('⏩ Auto-progress: continuing to next step');
+                // Start the next turn which will begin the next step
+                runNextTurn();
+              }, 1500); // 1.5 second pause for ceremony
+            } else {
+              console.log('⏸️ Manual mode: waiting for user to continue');
+              return; // Stop and wait for user to manually trigger next turn
+            }
           } else if (data.stepUpdate.type === 'extension_needed') {
             // Extension judgment needed
             console.log(`⏰ Step ${data.stepUpdate.step} needs extension judgment`);
