@@ -277,6 +277,12 @@ export default function DebateStream({
           } else if (data.stepUpdate.type === 'completed') {
             // Step completed
             console.log(`✅ Step ${data.stepUpdate.step} completed: ${data.stepUpdate.stepName}`);
+            // Add a special message to display step completion
+            onMessage({
+              agent: 'facilitator',
+              content: `[STEP_COMPLETED]\n✅ ステップ ${data.stepUpdate.step}（${data.stepUpdate.stepName}）が完了しました！`,
+              timestamp: new Date()
+            });
           } else if (data.stepUpdate.type === 'extension_needed') {
             // Extension judgment needed
             console.log(`⏰ Step ${data.stepUpdate.step} needs extension judgment`);
@@ -590,6 +596,11 @@ export default function DebateStream({
             console.error(`Unknown agent type: ${message.agent}`);
             return null;
           }
+
+          // Check if this is a step completion message
+          const isStepCompleted = message.content.includes('[STEP_COMPLETED]');
+          const displayContent = message.content.replace('[STEP_COMPLETED]\n', '');
+
           return (
             <div key={index} className="flex gap-2 md:gap-3">
               <div className={`w-1 md:w-2 rounded-full ${getAgentColor(message.agent)}`} />
@@ -603,8 +614,12 @@ export default function DebateStream({
                     {message.timestamp.toLocaleTimeString()}
                   </span>
                 </div>
-                <div className="text-base md:text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                  {message.content}
+                <div className={`text-base md:text-sm whitespace-pre-wrap leading-relaxed ${
+                  isStepCompleted
+                    ? 'bg-green-900 bg-opacity-30 border border-green-700 rounded-lg p-3 text-green-100 font-semibold'
+                    : 'text-gray-300'
+                }`}>
+                  {displayContent}
                 </div>
                 {message.imageUrl && (
                   <div className="mt-2">
