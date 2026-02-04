@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Play, Download, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 interface ActionBarProps {
   plan: string;
@@ -46,68 +48,118 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
     }
   };
 
-  const handleDownloadPlan = () => {
+  const handleDownloadPlan = async () => {
     try {
-      // Create a blob from the plan content
-      const blob = new Blob([plan], { type: 'text/markdown;charset=utf-8' });
+      console.log('Download plan started', { planLength: plan.length, theme, platform: Capacitor.getPlatform() });
 
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-
-      // Generate filename with timestamp
       const timestamp = new Date().toISOString().split('T')[0];
       const filename = `${theme || 'AI-Council'}_${timestamp}.md`;
-      link.download = filename;
 
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Check if running on native platform (Android/iOS)
+      if (Capacitor.isNativePlatform()) {
+        console.log('Using Capacitor Filesystem for native platform');
 
-      setResult({
-        type: 'success',
-        message: `ダウンロード完了: ${filename}`
-      });
-    } catch (error) {
+        // Save file using Capacitor Filesystem
+        await Filesystem.writeFile({
+          path: filename,
+          data: plan,
+          directory: Directory.Documents,
+          encoding: Encoding.UTF8
+        });
+
+        setResult({
+          type: 'success',
+          message: `保存完了: Documents/${filename}`
+        });
+      } else {
+        console.log('Using Blob download for web');
+
+        // Create a blob from the plan content (for web browsers)
+        const blob = new Blob([plan], { type: 'text/markdown;charset=utf-8' });
+        console.log('Blob created', { size: blob.size });
+
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+
+        console.log('Triggering download', { filename });
+
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setResult({
+          type: 'success',
+          message: `ダウンロード完了: ${filename}`
+        });
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
       setResult({
         type: 'error',
-        message: 'ダウンロードに失敗しました'
+        message: `エラー: ${error.message || 'ダウンロードに失敗しました'}`
       });
     }
   };
 
-  const handleDownloadMemo = () => {
+  const handleDownloadMemo = async () => {
     try {
-      // Create a blob from the memo content
-      const blob = new Blob([memo], { type: 'text/markdown;charset=utf-8' });
+      console.log('Download memo started', { memoLength: memo.length, theme, platform: Capacitor.getPlatform() });
 
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-
-      // Generate filename with timestamp
       const timestamp = new Date().toISOString().split('T')[0];
       const filename = `${theme || 'AI-Council'}_MEMO_${timestamp}.md`;
-      link.download = filename;
 
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Check if running on native platform (Android/iOS)
+      if (Capacitor.isNativePlatform()) {
+        console.log('Using Capacitor Filesystem for native platform');
 
-      setResult({
-        type: 'success',
-        message: `ダウンロード完了: ${filename}`
-      });
-    } catch (error) {
+        // Save file using Capacitor Filesystem
+        await Filesystem.writeFile({
+          path: filename,
+          data: memo,
+          directory: Directory.Documents,
+          encoding: Encoding.UTF8
+        });
+
+        setResult({
+          type: 'success',
+          message: `保存完了: Documents/${filename}`
+        });
+      } else {
+        console.log('Using Blob download for web');
+
+        // Create a blob from the memo content (for web browsers)
+        const blob = new Blob([memo], { type: 'text/markdown;charset=utf-8' });
+        console.log('Blob created', { size: blob.size });
+
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+
+        console.log('Triggering download', { filename });
+
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setResult({
+          type: 'success',
+          message: `ダウンロード完了: ${filename}`
+        });
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
       setResult({
         type: 'error',
-        message: 'ダウンロードに失敗しました'
+        message: `エラー: ${error.message || 'ダウンロードに失敗しました'}`
       });
     }
   };

@@ -16,7 +16,8 @@
       "Bash(npx cap init:*)",
       "Bash(npm run build:*)",
       "Bash(npx cap add android)",
-      "Bash(npx cap sync)"
+      "Bash(npx cap sync)",
+      "Bash(npx cap sync android)"
     ]
   }
 }
