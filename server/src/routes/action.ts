@@ -274,7 +274,7 @@ router.post('/export-to-google-docs', async (req, res) => {
       credentials,
       scopes: [
         'https://www.googleapis.com/auth/documents',
-        'https://www.googleapis.com/auth/drive.file'
+        'https://www.googleapis.com/auth/drive'  // .file を削除してフルアクセスに
       ]
     });
 
