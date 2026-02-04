@@ -3,6 +3,7 @@ import CouncilSettings from './components/CouncilSettings';
 import DebateStream from './components/DebateStream';
 import ArtifactPanel from './components/ArtifactPanel';
 import ActionBar from './components/ActionBar';
+import ErrorBoundary from './components/ErrorBoundary';
 import type { DebateState, Message, CouncilMode } from './types';
 
 function App() {
@@ -152,7 +153,8 @@ function App() {
   };
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <ErrorBoundary>
+      <div className="h-screen bg-gray-900 text-white flex flex-col">
       {/* Header - Mobile Optimized */}
       <header className="bg-gray-800 border-b border-gray-700 px-3 py-3 md:px-6 md:py-4 flex-shrink-0">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -250,6 +252,7 @@ function App() {
         />
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
 

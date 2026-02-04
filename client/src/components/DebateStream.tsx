@@ -154,6 +154,10 @@ export default function DebateStream({
 
       const data = await response.json();
       console.log('✅ Received response:', data);
+      console.log('🔍 Response keys:', Object.keys(data));
+      console.log('🔍 Agent:', data.agent);
+      console.log('🔍 Content length:', data.content?.length);
+      console.log('🔍 Step update:', data.stepUpdate);
 
       // Check for phase transition first (even if status is 400)
       if (data.needsPhaseTransition) {
@@ -173,7 +177,12 @@ export default function DebateStream({
 
       // Set current agent
       console.log(`💬 ${data.agent} is speaking...`);
-      setCurrentAgent(data.agent);
+
+      try {
+        setCurrentAgent(data.agent);
+      } catch (err) {
+        console.error('❌ Error setting current agent:', err);
+      }
 
       // Simulate thinking time
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -195,14 +204,22 @@ export default function DebateStream({
       }
 
       // Add message
-      const message: Message = {
-        agent: data.agent,
-        content: data.content,
-        timestamp: new Date(),
-        hasUserQuestion,
-        userQuestion,
-      };
-      onMessage(message);
+      console.log('📝 Creating message object...');
+      try {
+        const message: Message = {
+          agent: data.agent,
+          content: data.content,
+          timestamp: new Date(),
+          hasUserQuestion,
+          userQuestion,
+        };
+        console.log('📤 Calling onMessage...');
+        onMessage(message);
+        console.log('✅ Message added successfully');
+      } catch (err) {
+        console.error('❌ Error adding message:', err);
+        throw err;
+      }
 
       // If there's a user question, stop and wait for response
       if (hasUserQuestion) {
@@ -222,19 +239,26 @@ export default function DebateStream({
       }
 
       // Handle step updates from Facilitator
+      console.log('🔍 Checking for step updates...');
       if (data.stepUpdate) {
-        console.log('🎯 Step update detected:', data.stepUpdate);
+        console.log('🎯 Step update detected:', JSON.stringify(data.stepUpdate));
 
-        if (data.stepUpdate.type === 'start') {
-          // Step started
-          console.log(`▶️ Step ${data.stepUpdate.step} started: ${data.stepUpdate.stepName} (${data.stepUpdate.estimatedTurns} turns)`);
-        } else if (data.stepUpdate.type === 'completed') {
-          // Step completed
-          console.log(`✅ Step ${data.stepUpdate.step} completed: ${data.stepUpdate.stepName}`);
-        } else if (data.stepUpdate.type === 'extension_needed') {
-          // Extension judgment needed
-          console.log(`⏰ Step ${data.stepUpdate.step} needs extension judgment`);
+        try {
+          if (data.stepUpdate.type === 'start') {
+            // Step started
+            console.log(`▶️ Step ${data.stepUpdate.step} started: ${data.stepUpdate.stepName} (${data.stepUpdate.estimatedTurns} turns)`);
+          } else if (data.stepUpdate.type === 'completed') {
+            // Step completed
+            console.log(`✅ Step ${data.stepUpdate.step} completed: ${data.stepUpdate.stepName}`);
+          } else if (data.stepUpdate.type === 'extension_needed') {
+            // Extension judgment needed
+            console.log(`⏰ Step ${data.stepUpdate.step} needs extension judgment`);
+          }
+        } catch (err) {
+          console.error('❌ Error processing step update:', err);
         }
+      } else {
+        console.log('ℹ️ No step update in this turn');
       }
 
       // Check for extension judgment needed
@@ -254,16 +278,23 @@ export default function DebateStream({
       }
 
       // Update phase info (including step info and turn counts)
-      onPhaseInfoUpdate(
-        data.phase,
-        data.phaseName,
-        data.turn,
-        data.totalTurnsInPhase,
-        data.currentStep,
-        data.currentStepName,
-        data.estimatedStepTurns,
-        data.actualStepTurns
-      );
+      console.log('📊 Updating phase info...');
+      try {
+        onPhaseInfoUpdate(
+          data.phase,
+          data.phaseName,
+          data.turn,
+          data.totalTurnsInPhase,
+          data.currentStep,
+          data.currentStepName,
+          data.estimatedStepTurns,
+          data.actualStepTurns
+        );
+        console.log('✅ Phase info updated successfully');
+      } catch (err) {
+        console.error('❌ Error updating phase info:', err);
+        throw err;
+      }
 
       setCurrentAgent(null);
 
