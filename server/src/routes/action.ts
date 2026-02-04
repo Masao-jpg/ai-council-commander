@@ -179,17 +179,18 @@ router.post('/export-to-google-docs', async (req, res) => {
           step3: 'Enable Google Docs API and Google Drive API',
           step4: 'Create a Service Account and download the JSON key file',
           step5: 'Local: Set GOOGLE_SERVICE_ACCOUNT_KEY to file path (e.g., ./google-credentials.json)',
-          step6: 'Render: Set GOOGLE_SERVICE_ACCOUNT_KEY to the entire JSON content as a string'
+          step6_render_a: 'Render: Create Secret File at server/google-credentials.json with JSON content',
+          step6_render_b: 'Render: Set GOOGLE_SERVICE_ACCOUNT_KEY=server/google-credentials.json (file path)'
         }
       });
     }
 
     // Read service account credentials
-    // Support both file path and direct JSON string
+    // Support both file path and direct JSON string (fallback)
     let credentials: any;
 
     if (credentialsEnv.startsWith('{')) {
-      // Direct JSON string (for Render/production)
+      // Direct JSON string (legacy fallback - not recommended)
       try {
         credentials = JSON.parse(credentialsEnv);
       } catch (error) {
@@ -199,7 +200,9 @@ router.post('/export-to-google-docs', async (req, res) => {
         });
       }
     } else {
-      // File path (for local development)
+      // File path (recommended for both local and Render)
+      // Local: ./google-credentials.json
+      // Render: server/google-credentials.json (via Secret Files)
       try {
         await fs.access(credentialsEnv);
         const credentialsContent = await fs.readFile(credentialsEnv, 'utf-8');
@@ -207,7 +210,8 @@ router.post('/export-to-google-docs', async (req, res) => {
       } catch (error) {
         return res.status(500).json({
           error: 'Credentials file not found',
-          message: `File not found at: ${credentialsEnv}`
+          message: `File not found at: ${credentialsEnv}`,
+          hint: 'For Render: Make sure you created a Secret File at server/google-credentials.json'
         });
       }
     }
