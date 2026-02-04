@@ -2,7 +2,7 @@
 
 export type AgentRole = 'visionary' | 'analyst' | 'realist' | 'guardian' | 'moderator' | 'secretary';
 
-export type CouncilMode = 'free' | 'brainstorm' | 'requirements' | 'implementation' | 'review';
+export type CouncilMode = 'free' | 'define' | 'develop' | 'structure' | 'generate' | 'refine';
 
 export interface Message {
   agent: AgentRole;
@@ -63,24 +63,29 @@ export const MODE_INFO: Record<CouncilMode, { name: string; nameJa: string; desc
     nameJa: 'フリーモード',
     description: 'フェーズに縛られず自由に議論'
   },
-  brainstorm: {
-    name: 'Brainstorm',
-    nameJa: '思考整理/壁打ちモード',
-    description: '曖昧な状態からの具体化、視点の拡張'
+  define: {
+    name: 'Define',
+    nameJa: '情報収集モード',
+    description: '全体目的とゴール定義、情報収集'
   },
-  requirements: {
-    name: 'Requirements',
-    nameJa: '要件検討モード',
-    description: '上流工程の定義（あらゆるユースケースに対応）'
+  develop: {
+    name: 'Develop',
+    nameJa: '発散モード',
+    description: 'ブレインストーミングで可能性を拡張'
   },
-  implementation: {
-    name: 'Implementation',
-    nameJa: '実装モード',
-    description: '定義された要件の具現化'
+  structure: {
+    name: 'Structure',
+    nameJa: '構造化モード',
+    description: '評価・決定・骨格設計'
   },
-  review: {
-    name: 'Review',
-    nameJa: 'テスト/レビューモード',
-    description: '既存成果物の品質担保'
+  generate: {
+    name: 'Generate',
+    nameJa: '生成モード',
+    description: '骨子に沿って本文を生成'
+  },
+  refine: {
+    name: 'Refine',
+    nameJa: '洗練モード',
+    description: '検証・修正して完成させる'
   }
 };

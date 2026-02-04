@@ -10,7 +10,7 @@ interface CouncilSettingsProps {
 
 export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSettingsProps) {
   const [theme, setTheme] = useState('');
-  const [mode, setMode] = useState<CouncilMode>('brainstorm');
+  const [mode, setMode] = useState<CouncilMode>('free');
   const [outputMode, setOutputMode] = useState<'implementation' | 'documentation'>('implementation');
   const [isExpanded, setIsExpanded] = useState(true);
 

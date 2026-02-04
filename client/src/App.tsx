@@ -9,7 +9,7 @@ function App() {
   const [debateState, setDebateState] = useState<DebateState>({
     sessionId: '',
     theme: '',
-    mode: 'brainstorm',
+    mode: 'free',
     outputMode: 'implementation',
     messages: [],
     currentPlan: '# AI Council Commander\n\n議論を開始すると、ここに計画が表示されます。',

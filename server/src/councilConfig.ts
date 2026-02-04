@@ -3,7 +3,7 @@
 export type AgentRole = 'visionary' | 'analyst' | 'realist' | 'guardian' | 'moderator' | 'secretary';
 
 // モードタイプの定義
-export type CouncilMode = 'free' | 'brainstorm' | 'requirements' | 'implementation' | 'review';
+export type CouncilMode = 'free' | 'define' | 'develop' | 'structure' | 'generate' | 'refine';
 
 export interface ModeConfig {
   id: CouncilMode;
@@ -25,7 +25,7 @@ export interface AgentConfig {
   systemPrompt: string;
 }
 
-// モード設定
+// モード設定（フリー + 5フェーズ対応モード）
 export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
   free: {
     id: 'free',
@@ -36,40 +36,49 @@ export const MODE_CONFIGS: Record<CouncilMode, ModeConfig> = {
     expectedOutcome: '議論の流れに応じた柔軟な成果物',
     usesStructuredPhases: false
   },
-  brainstorm: {
-    id: 'brainstorm',
-    name: 'Brainstorm',
-    nameJa: '思考整理/壁打ちモード',
-    description: '曖昧な状態からの具体化、視点の拡張',
-    purpose: '多様な観点から検討事項の洗い出し、資料の骨子作成、作業段取りの提案',
-    expectedOutcome: '各種フレームワークや観点に沿って思考を整理したドキュメント',
+  define: {
+    id: 'define',
+    name: 'Define',
+    nameJa: '情報収集モード',
+    description: '全体目的とゴール定義、情報収集',
+    purpose: 'プロジェクトの全体像を明確にし、必要な情報を収集',
+    expectedOutcome: 'プロジェクト憲章（全体目的、ゴール、客観・主観情報、制約条件）',
     usesStructuredPhases: true
   },
-  requirements: {
-    id: 'requirements',
-    name: 'Requirements',
-    nameJa: '要件検討モード',
-    description: '上流工程の定義（あらゆるユースケースに対応）',
-    purpose: 'ユーザーの要望を実現するための要件定義、プランニング',
-    expectedOutcome: '具体的な計画書、要件定義書、旅程表、献立プランなど',
+  develop: {
+    id: 'develop',
+    name: 'Develop',
+    nameJa: '発散モード',
+    description: 'ブレインストーミングで可能性を拡張',
+    purpose: 'アイデアを広げ、多様な視点から可能性を探索',
+    expectedOutcome: '仮説シート（可能性リスト、拡張された視点、有望な仮説）',
     usesStructuredPhases: true
   },
-  implementation: {
-    id: 'implementation',
-    name: 'Implementation',
-    nameJa: '実装モード',
-    description: '定義された要件の具現化',
-    purpose: '具体的な作業・制作を行う',
-    expectedOutcome: 'ソースコード、詳細レシピ、具体的な調達・購入手順書など',
+  structure: {
+    id: 'structure',
+    name: 'Structure',
+    nameJa: '構造化モード',
+    description: '評価・決定・骨格設計',
+    purpose: '仮説を評価し、方針を決定して成果物の骨格を設計',
+    expectedOutcome: '骨子案（評価基準、決定方針、成果物の詳細な骨格）',
     usesStructuredPhases: true
   },
-  review: {
-    id: 'review',
-    name: 'Review',
-    nameJa: 'テスト/レビューモード',
-    description: '既存成果物の品質担保',
-    purpose: '批判的思考による検証、改善案の提示',
-    expectedOutcome: 'レビューレポート、修正案、テスト結果報告書',
+  generate: {
+    id: 'generate',
+    name: 'Generate',
+    nameJa: '生成モード',
+    description: '骨子に沿って本文を生成',
+    purpose: '設計した骨格に基づいて具体的な内容を作成',
+    expectedOutcome: '初稿（骨格に基づく本文、具体例・データ）',
+    usesStructuredPhases: true
+  },
+  refine: {
+    id: 'refine',
+    name: 'Refine',
+    nameJa: '洗練モード',
+    description: '検証・修正して完成させる',
+    purpose: '成果物を精査し、品質を高めて完成形にする',
+    expectedOutcome: '成果物パッケージ（検証ログ、最終成果物、全ての中間成果物）',
     usesStructuredPhases: true
   }
 };
@@ -139,60 +148,69 @@ export function getModeSpecificInstruction(mode: CouncilMode, phase: number): st
 
   // モード別の詳細指示
   switch (mode) {
-    case 'brainstorm':
-      instruction += `【思考整理/壁打ちモード - エージェントの役割】\n`;
-      instruction += `多様な観点から検討事項の洗い出し、資料の骨子作成、作業段取りの提案を行ってください。\n\n`;
+    case 'define':
+      instruction += `【情報収集モード - エージェントの役割】\n`;
+      instruction += `プロジェクトの全体像を明確にし、必要な情報を収集してプロジェクト憲章を作成します。\n\n`;
       instruction += `【重要な行動指針】\n`;
-      instruction += `- ユーザーの曖昧なアイデアを具体化することに集中\n`;
-      instruction += `- 多様な観点（SWOT分析、5W1H、ロジックツリー、マインドマップなど）から検討\n`;
-      instruction += `- 「何をしたいか」「なぜやるか」に焦点を当てる\n`;
-      instruction += `- 実装の詳細には深入りせず、思考の整理に専念\n`;
-      instruction += `- フレームワークを使って視点を拡張\n\n`;
+      instruction += `- 全体目的（Why）: 長期的なビジョンを明確にする\n`;
+      instruction += `- セッションゴール（What）: 今回作成する具体的な成果物を定義\n`;
+      instruction += `- 客観情報: 事実、データ、市場環境を収集\n`;
+      instruction += `- 主観情報: 関係者の想い、価値観、懸念事項を整理\n`;
+      instruction += `- 制約条件: 予算、期限、リソースを明確にする\n\n`;
       instruction += `【最終成果物イメージ】\n`;
-      instruction += `各種フレームワークや観点に沿って思考を整理したドキュメント\n`;
-      instruction += `例: マインドマップ、ロジックツリー、SWOT分析シート、検討すべき観点リストなど\n`;
+      instruction += `プロジェクト憲章（全体目的、ゴール、客観・主観情報、制約条件）\n`;
       break;
 
-    case 'requirements':
-      instruction += `【要件検討モード - エージェントの役割】\n`;
-      instruction += `ユーザーの要望を実現するための要件定義、プランニングを行ってください。\n\n`;
+    case 'develop':
+      instruction += `【発散モード - エージェントの役割】\n`;
+      instruction += `ブレインストーミングとフレームワーク活用で可能性を拡張し、仮説シートを作成します。\n\n`;
       instruction += `【重要な行動指針】\n`;
-      instruction += `- 上流工程の定義（仕事、料理、旅行などあらゆるユースケースに対応）\n`;
-      instruction += `- 機能要件と非機能要件を明確に分ける\n`;
-      instruction += `- 実現可能性と優先順位を検討\n`;
-      instruction += `- 具体的なステップとマイルストーンを提示\n`;
-      instruction += `- 制約条件（予算、期限、リソース）を考慮\n\n`;
+      instruction += `- 可能性リスト: ブレインストーミングで全アイデアを出す\n`;
+      instruction += `- 拡張された視点: フレームワーク（SWOT、5W1Hなど）で新たな視点を獲得\n`;
+      instruction += `- 有望な仮説: 特に有望なアイデアについて背景・内容・結果を記述\n`;
+      instruction += `- 質より量を重視して、まずは発散させる\n`;
+      instruction += `- 批判は後回しにして、自由な発想を促す\n\n`;
       instruction += `【最終成果物イメージ】\n`;
-      instruction += `具体的な計画書、要件定義書、旅程表、献立プランなど\n`;
-      instruction += `例: プロジェクト計画書、旅行スケジュール、料理の献立表、タスクリストなど\n`;
+      instruction += `仮説シート（可能性リスト、拡張された視点、有望な仮説）\n`;
       break;
 
-    case 'implementation':
-      instruction += `【実装モード - エージェントの役割】\n`;
-      instruction += `定義された要件を具現化するための具体的な作業・制作を行ってください。\n\n`;
+    case 'structure':
+      instruction += `【構造化モード - エージェントの役割】\n`;
+      instruction += `評価基準に基づいて方針を決定し、成果物の骨格を設計します。\n\n`;
       instruction += `【重要な行動指針】\n`;
-      instruction += `- 具体的な実装手順に焦点を当てる\n`;
-      instruction += `- 使用する技術、ツール、ライブラリを明確にする\n`;
-      instruction += `- ステップバイステップの作業手順を提示\n`;
-      instruction += `- 実行可能なコード、レシピ、手順書を作成\n`;
-      instruction += `- 詳細な調達・購入リストも含める\n\n`;
+      instruction += `- 評価基準: 仮説を選択する判断軸を設定\n`;
+      instruction += `- 決定方針: 評価基準に基づき最終的な方針を選択し理由を明記\n`;
+      instruction += `- 成果物の詳細な骨格: 章立て・見出し・段落構成を設計\n`;
+      instruction += `- 発散したアイデアを収束させる\n`;
+      instruction += `- 実現可能性とインパクトを両立させる\n\n`;
       instruction += `【最終成果物イメージ】\n`;
-      instruction += `ソースコード、詳細レシピ、具体的な調達・購入手順書など\n`;
-      instruction += `例: 動作するコード、材料と手順が詳細な料理レシピ、購入リンク付きの機材リストなど\n`;
+      instruction += `骨子案（評価基準、決定方針、成果物の詳細な骨格）\n`;
       break;
 
-    case 'review':
-      instruction += `【テスト/レビューモード - エージェントの役割】\n`;
-      instruction += `既存成果物の品質担保のため、批判的思考による検証、改善案の提示を行ってください。\n\n`;
+    case 'generate':
+      instruction += `【生成モード - エージェントの役割】\n`;
+      instruction += `骨子案に沿って本文を生成し、初稿を完成させます。\n\n`;
       instruction += `【重要な行動指針】\n`;
-      instruction += `- **Phase 1では、必ずユーザーに「レビュー対象の成果物」を提示してもらう**\n`;
-      instruction += `- 成果物が提示されたら、品質、安全性、改善点を批判的に検証\n`;
-      instruction += `- 具体的な修正案やテスト結果を提示\n`;
-      instruction += `- 新規作成ではなく、既存成果物の改善に焦点を当てる\n`;
-      instruction += `- セキュリティ、パフォーマンス、保守性などを多角的に評価\n\n`;
+      instruction += `- 骨格に基づく本文: 骨子案に従って一通り執筆\n`;
+      instruction += `- 具体例・データ: 説得力を高めるための事例やデータを追記\n`;
+      instruction += `- 読者を意識した分かりやすい表現\n`;
+      instruction += `- 論理的な流れと一貫性を保つ\n`;
+      instruction += `- 完成度よりも全体を書き上げることを優先\n\n`;
       instruction += `【最終成果物イメージ】\n`;
-      instruction += `レビューレポート、修正案、テスト結果報告書\n`;
-      instruction += `例: コードレビュー結果、改善提案リスト、セキュリティ診断レポート、修正済みコードなど\n`;
+      instruction += `初稿（骨格に基づく本文、具体例・データ）\n`;
+      break;
+
+    case 'refine':
+      instruction += `【洗練モード - エージェントの役割】\n`;
+      instruction += `検証・修正を経て最終成果物パッケージを完成させます。\n\n`;
+      instruction += `【重要な行動指針】\n`;
+      instruction += `- 検証ログ: 抜け漏れや矛盾をチェックし修正履歴を記録\n`;
+      instruction += `- 最終成果物: レビューと修正が完了した納品可能な完成品\n`;
+      instruction += `- 補足: 全ての中間成果物をパッケージ化\n`;
+      instruction += `- 品質を高め、誤りを修正する\n`;
+      instruction += `- 全体の整合性を確認し、完成度を上げる\n\n`;
+      instruction += `【最終成果物イメージ】\n`;
+      instruction += `成果物パッケージ（検証ログ、最終成果物、全ての中間成果物）\n`;
       break;
   }
 
@@ -661,19 +679,21 @@ export const NEW_PHASES: PhaseConfig[] = [
 // 後方互換性のため（既存コードが参照している場合）
 export const COMMON_PHASES = NEW_PHASES;
 
-// モード別の担当エージェントを決定
+// モード別の担当エージェントを決定（Phase 4: 生成で使用）
 export function getCreationAgent(mode: CouncilMode): AgentRole {
   switch (mode) {
     case 'free':
       return 'moderator';  // フリーモードはModeratorが適任
-    case 'brainstorm':
-      return 'visionary';  // 思考整理はVisionaryが適任
-    case 'requirements':
-      return 'analyst';    // 要件検討はAnalystが適任
-    case 'implementation':
-      return 'realist';    // 実装はRealistが適任
-    case 'review':
-      return 'guardian';   // レビューはGuardianが適任
+    case 'define':
+      return 'analyst';    // 情報収集はAnalystが適任
+    case 'develop':
+      return 'visionary';  // 発散はVisionaryが適任
+    case 'structure':
+      return 'analyst';    // 構造化はAnalystが適任
+    case 'generate':
+      return 'realist';    // 生成はRealistが適任
+    case 'refine':
+      return 'moderator';  // 洗練はModeratorが適任
   }
 }
 
