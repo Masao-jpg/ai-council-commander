@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Play, Download, CheckCircle, AlertCircle, FileText, FileSpreadsheet } from 'lucide-react';
-import { getApiUrl } from '../config';
+import { Play, Download, CheckCircle, AlertCircle, FileText } from 'lucide-react';
 
 interface ActionBarProps {
   plan: string;
@@ -47,125 +46,69 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
     }
   };
 
-  const handleExport = async () => {
-    if (isDebating) {
-      setResult({ type: 'error', message: '議論が終了するまでお待ちください' });
-      return;
-    }
-
-    setIsExecuting(true);
-    setResult(null);
-
+  const handleDownloadPlan = () => {
     try {
-      const response = await fetch('/api/action/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, theme, format: 'md' }),
+      // Create a blob from the plan content
+      const blob = new Blob([plan], { type: 'text/markdown;charset=utf-8' });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `${theme || 'AI-Council'}_${timestamp}.md`;
+      link.download = filename;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setResult({
+        type: 'success',
+        message: `ダウンロード完了: ${filename}`
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setResult({
-          type: 'success',
-          message: `ドキュメントを保存しました: ${data.filename}`,
-        });
-      } else {
-        setResult({ type: 'error', message: data.error || 'エラーが発生しました' });
-      }
     } catch (error) {
-      setResult({ type: 'error', message: '通信エラーが発生しました' });
-    } finally {
-      setIsExecuting(false);
+      setResult({
+        type: 'error',
+        message: 'ダウンロードに失敗しました'
+      });
     }
   };
 
-  const handleExportMemo = async () => {
-    if (isDebating) {
-      setResult({ type: 'error', message: '議論が終了するまでお待ちください' });
-      return;
-    }
-
-    setIsExecuting(true);
-    setResult(null);
-
+  const handleDownloadMemo = () => {
     try {
-      const response = await fetch('/api/action/export-memo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memo, theme, format: 'md' }),
+      // Create a blob from the memo content
+      const blob = new Blob([memo], { type: 'text/markdown;charset=utf-8' });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `${theme || 'AI-Council'}_MEMO_${timestamp}.md`;
+      link.download = filename;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setResult({
+        type: 'success',
+        message: `ダウンロード完了: ${filename}`
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setResult({
-          type: 'success',
-          message: `議事メモを保存しました: ${data.filename}`,
-        });
-      } else {
-        setResult({ type: 'error', message: data.error || 'エラーが発生しました' });
-      }
     } catch (error) {
-      setResult({ type: 'error', message: '通信エラーが発生しました' });
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  const handleExportToGoogleDocs = async () => {
-    if (isDebating) {
-      setResult({ type: 'error', message: '議論が終了するまでお待ちください' });
-      return;
-    }
-
-    setIsExecuting(true);
-    setResult(null);
-
-    try {
-      // Ensure title is short and appropriate
-      const docTitle = theme || 'AI Council Commander - 議論結果';
-
-      // Debug log
-      console.log('Sending to Google Docs:', {
-        contentLength: plan.length,
-        title: docTitle,
-        titleLength: docTitle.length
+      setResult({
+        type: 'error',
+        message: 'ダウンロードに失敗しました'
       });
-
-      const response = await fetch(getApiUrl('/api/action/export-to-google-docs'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: plan,
-          title: docTitle
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setResult({
-          type: 'success',
-          message: `Google Docsを作成しました！`,
-        });
-        // Open the document in a new tab
-        window.open(data.url, '_blank');
-      } else {
-        if (data.setupInstructions) {
-          setResult({
-            type: 'error',
-            message: 'Google Docs未設定。コンソールで設定手順を確認してください。'
-          });
-          console.error('Google Docs Setup Required:', data.setupInstructions);
-        } else {
-          setResult({ type: 'error', message: data.error || 'エラーが発生しました' });
-        }
-      }
-    } catch (error) {
-      setResult({ type: 'error', message: '通信エラーが発生しました' });
-    } finally {
-      setIsExecuting(false);
     }
   };
 
@@ -187,33 +130,23 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
           )}
 
           <button
-            onClick={handleExport}
+            onClick={handleDownloadPlan}
             disabled={isDebating || isExecuting}
             className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden md:inline">Export Doc</span>
-            <span className="md:hidden">Doc</span>
+            <span className="hidden md:inline">計画DL</span>
+            <span className="md:hidden">計画</span>
           </button>
 
           <button
-            onClick={handleExportMemo}
+            onClick={handleDownloadMemo}
             disabled={isDebating || isExecuting}
             className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <FileText className="w-4 h-4" />
-            <span className="hidden md:inline">Export Memo</span>
-            <span className="md:hidden">Memo</span>
-          </button>
-
-          <button
-            onClick={handleExportToGoogleDocs}
-            disabled={isDebating || isExecuting}
-            className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span className="hidden md:inline">Google Docs</span>
-            <span className="md:hidden">GDocs</span>
+            <span className="hidden md:inline">メモDL</span>
+            <span className="md:hidden">メモ</span>
           </button>
         </div>
 
