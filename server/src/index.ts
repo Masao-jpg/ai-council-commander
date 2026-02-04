@@ -17,6 +17,21 @@ app.use(express.json());
 // Serve uploaded images
 app.use('/uploads', express.static('uploads'));
 
+// Root path
+app.get('/', (req, res) => {
+  res.json({
+    message: 'AI Council Commander API',
+    version: '3.1.0',
+    endpoints: {
+      health: '/api/health',
+      debate: '/api/debate',
+      action: '/api/action',
+      upload: '/api/upload',
+      debug: '/api/debug-credentials'
+    }
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

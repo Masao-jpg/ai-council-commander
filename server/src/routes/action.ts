@@ -161,10 +161,23 @@ router.get('/exports', async (req, res) => {
 // Export to Google Docs
 router.post('/export-to-google-docs', async (req, res) => {
   try {
-    const { content, title } = req.body;
+    let { content, title } = req.body;
 
     if (!content || !title) {
       return res.status(400).json({ error: 'Content and title are required' });
+    }
+
+    // Validate and sanitize title
+    // Google Docs title has a 255 character limit and shouldn't contain newlines
+    if (title.length > 255 || title.includes('\n')) {
+      console.warn(`Warning: Title too long (${title.length} chars) or contains newlines. Truncating...`);
+      // Take first line only and limit to 200 characters
+      title = title.split('\n')[0].substring(0, 200).trim();
+
+      // If still empty or too short, use a default title
+      if (title.length < 5) {
+        title = `AI Council Document - ${new Date().toISOString().split('T')[0]}`;
+      }
     }
 
     // Check if Google service account credentials are configured

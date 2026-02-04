@@ -123,12 +123,22 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
     setResult(null);
 
     try {
+      // Ensure title is short and appropriate
+      const docTitle = theme || 'AI Council Commander - 議論結果';
+
+      // Debug log
+      console.log('Sending to Google Docs:', {
+        contentLength: plan.length,
+        title: docTitle,
+        titleLength: docTitle.length
+      });
+
       const response = await fetch(getApiUrl('/api/action/export-to-google-docs'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: plan,
-          title: theme || 'AI Council Commander - 議論結果'
+          title: docTitle
         }),
       });
 
