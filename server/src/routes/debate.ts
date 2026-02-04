@@ -173,27 +173,32 @@ function createSpeakerDeck(phase: PhaseConfig, forceAnalystFirst: boolean = fals
 // セッション初期化
 router.post('/start', async (req, res) => {
   try {
-    const { sessionId, theme, mode, outputMode } = req.body;
+    const { sessionId, theme, mode, outputMode, startPhase } = req.body;
 
     if (!theme) {
       return res.status(400).json({ error: 'Theme is required' });
     }
 
-    // Phase 1のデッキを生成（Analystを最初に配置）
-    const phase1 = DEBATE_PHASES[0];
-    const speakerDeck = createSpeakerDeck(phase1, true);
+    // 開始フェーズの決定（デフォルトは1）
+    const initialPhaseNumber = startPhase && startPhase >= 1 && startPhase <= DEBATE_PHASES.length
+      ? startPhase
+      : 1;
+
+    // 指定されたフェーズのデッキを生成（Analystを最初に配置）
+    const initialPhase = DEBATE_PHASES[initialPhaseNumber - 1];
+    const speakerDeck = createSpeakerDeck(initialPhase, true);
 
     const session: DebateSession = {
       sessionId,
       theme,
-      mode: mode || 'brainstorm',
+      mode: mode || 'free',
       outputMode,
-      currentPhase: 1,
+      currentPhase: initialPhaseNumber,
       currentTurn: 0,
       speakerDeck,
       history: [],
       currentPlan: `# ${theme}\n\n議論を開始します...`,
-      currentMemo: `# 議事メモ\n\n## セッション開始\n- 議題: ${theme}\n- モード: ${mode || 'brainstorm'}\n`,
+      currentMemo: `# 議事メモ\n\n## セッション開始\n- 議題: ${theme}\n- モード: ${mode || 'free'}\n- 開始フェーズ: Phase ${initialPhaseNumber} (${initialPhase.nameJa})\n`,
       extensionCount: 0
     };
 
@@ -203,7 +208,7 @@ router.post('/start', async (req, res) => {
       success: true,
       message: 'Debate session initialized',
       sessionId,
-      phase: phase1,
+      phase: initialPhase,
       totalPhases: DEBATE_PHASES.length,
       checkpoints: CHECKPOINTS
     });
@@ -422,13 +427,11 @@ router.post('/next-turn', async (req, res) => {
       }
     }
 
-    // チェックポイント判定
-    const totalTurnsSoFar = DEBATE_PHASES
-      .slice(0, session.currentPhase)
-      .reduce((sum, p) => sum + p.totalTurns, 0);
-
-    const isCheckpoint = CHECKPOINTS.includes(totalTurnsSoFar);
+    // フェーズ完了判定
     const isPhaseComplete = session.speakerDeck.length === 0;
+
+    // チェックポイントはフェーズ完了時とする（フェーズ選択機能対応）
+    const isCheckpoint = isPhaseComplete;
 
     console.log(`📊 Turn complete: isPhaseComplete=${isPhaseComplete}, remainingInDeck=${session.speakerDeck.length}`);
 

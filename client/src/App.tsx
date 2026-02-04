@@ -27,8 +27,20 @@ function App() {
     extensionCount: 0,
   });
 
-  const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation') => {
+  const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation', startPhase: number) => {
     const sessionId = `session_${Date.now()}`;
+
+    // Phase configurations
+    const phaseConfigs = [
+      { phase: 1, nameJa: '情報収集', totalTurns: 11 },
+      { phase: 2, nameJa: '発散', totalTurns: 11 },
+      { phase: 3, nameJa: '構造化', totalTurns: 11 },
+      { phase: 4, nameJa: '生成', totalTurns: 8 },
+      { phase: 5, nameJa: '洗練', totalTurns: 11 },
+    ];
+
+    const initialPhase = phaseConfigs[startPhase - 1];
+
     setDebateState({
       sessionId,
       theme,
@@ -38,10 +50,10 @@ function App() {
       currentPlan: '# ' + theme + '\n\n議論を準備中...',
       currentMemo: '# 議事メモ\n\n議論を準備中...',
       isDebating: true,
-      currentPhase: 1,
-      currentPhaseName: '情報収集',
+      currentPhase: initialPhase.phase,
+      currentPhaseName: initialPhase.nameJa,
       currentTurn: 0,
-      totalTurnsInPhase: 11,
+      totalTurnsInPhase: initialPhase.totalTurns,
       isWaitingForPhaseTransition: false,
       isWaitingForUserResponse: false,
       currentUserQuestion: '',

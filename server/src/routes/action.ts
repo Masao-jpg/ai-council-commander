@@ -3,6 +3,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import { google } from 'googleapis';
 
 const router = Router();
 const execAsync = promisify(exec);
@@ -154,6 +155,221 @@ router.get('/exports', async (req, res) => {
   } catch (error: any) {
     console.error('Error listing exports:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Export to Google Docs
+router.post('/export-to-google-docs', async (req, res) => {
+  try {
+    const { content, title } = req.body;
+
+    if (!content || !title) {
+      return res.status(400).json({ error: 'Content and title are required' });
+    }
+
+    // Check if Google service account credentials are configured
+    const credentialsEnv = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    if (!credentialsEnv) {
+      return res.status(500).json({
+        error: 'Google Docs not configured',
+        message: 'GOOGLE_SERVICE_ACCOUNT_KEY environment variable not set',
+        setupInstructions: {
+          step1: 'Go to Google Cloud Console: https://console.cloud.google.com',
+          step2: 'Create or select a project',
+          step3: 'Enable Google Docs API and Google Drive API',
+          step4: 'Create a Service Account and download the JSON key file',
+          step5: 'Local: Set GOOGLE_SERVICE_ACCOUNT_KEY to file path (e.g., ./google-credentials.json)',
+          step6: 'Render: Set GOOGLE_SERVICE_ACCOUNT_KEY to the entire JSON content as a string'
+        }
+      });
+    }
+
+    // Read service account credentials
+    // Support both file path and direct JSON string
+    let credentials: any;
+
+    if (credentialsEnv.startsWith('{')) {
+      // Direct JSON string (for Render/production)
+      try {
+        credentials = JSON.parse(credentialsEnv);
+      } catch (error) {
+        return res.status(500).json({
+          error: 'Invalid JSON in GOOGLE_SERVICE_ACCOUNT_KEY',
+          message: 'The environment variable contains invalid JSON'
+        });
+      }
+    } else {
+      // File path (for local development)
+      try {
+        await fs.access(credentialsEnv);
+        const credentialsContent = await fs.readFile(credentialsEnv, 'utf-8');
+        credentials = JSON.parse(credentialsContent);
+      } catch (error) {
+        return res.status(500).json({
+          error: 'Credentials file not found',
+          message: `File not found at: ${credentialsEnv}`
+        });
+      }
+    }
+
+    // Initialize Google Auth
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: [
+        'https://www.googleapis.com/auth/documents',
+        'https://www.googleapis.com/auth/drive.file'
+      ]
+    });
+
+    const authClient = await auth.getClient();
+    const docs = google.docs({ version: 'v1', auth: authClient as any });
+    const drive = google.drive({ version: 'v3', auth: authClient as any });
+
+    // Create a new Google Doc
+    const createResponse = await docs.documents.create({
+      requestBody: {
+        title: title
+      }
+    });
+
+    const documentId = createResponse.data.documentId;
+
+    if (!documentId) {
+      throw new Error('Failed to create document');
+    }
+
+    // Convert markdown-like content to simple formatted text
+    // Split content into lines and create paragraph requests
+    const lines = content.split('\n');
+    const requests: any[] = [];
+    let currentIndex = 1; // Start after the default paragraph
+
+    for (const line of lines) {
+      if (line.trim() === '') {
+        // Empty line - add a paragraph break
+        requests.push({
+          insertText: {
+            location: { index: currentIndex },
+            text: '\n'
+          }
+        });
+        currentIndex += 1;
+      } else if (line.startsWith('# ')) {
+        // H1 heading
+        const text = line.substring(2) + '\n';
+        requests.push({
+          insertText: {
+            location: { index: currentIndex },
+            text: text
+          }
+        });
+        const endIndex = currentIndex + text.length - 1;
+        requests.push({
+          updateParagraphStyle: {
+            range: {
+              startIndex: currentIndex,
+              endIndex: endIndex
+            },
+            paragraphStyle: {
+              namedStyleType: 'HEADING_1'
+            },
+            fields: 'namedStyleType'
+          }
+        });
+        currentIndex += text.length;
+      } else if (line.startsWith('## ')) {
+        // H2 heading
+        const text = line.substring(3) + '\n';
+        requests.push({
+          insertText: {
+            location: { index: currentIndex },
+            text: text
+          }
+        });
+        const endIndex = currentIndex + text.length - 1;
+        requests.push({
+          updateParagraphStyle: {
+            range: {
+              startIndex: currentIndex,
+              endIndex: endIndex
+            },
+            paragraphStyle: {
+              namedStyleType: 'HEADING_2'
+            },
+            fields: 'namedStyleType'
+          }
+        });
+        currentIndex += text.length;
+      } else if (line.startsWith('### ')) {
+        // H3 heading
+        const text = line.substring(4) + '\n';
+        requests.push({
+          insertText: {
+            location: { index: currentIndex },
+            text: text
+          }
+        });
+        const endIndex = currentIndex + text.length - 1;
+        requests.push({
+          updateParagraphStyle: {
+            range: {
+              startIndex: currentIndex,
+              endIndex: endIndex
+            },
+            paragraphStyle: {
+              namedStyleType: 'HEADING_3'
+            },
+            fields: 'namedStyleType'
+          }
+        });
+        currentIndex += text.length;
+      } else {
+        // Normal text
+        const text = line + '\n';
+        requests.push({
+          insertText: {
+            location: { index: currentIndex },
+            text: text
+          }
+        });
+        currentIndex += text.length;
+      }
+    }
+
+    // Apply all text insertions and formatting
+    if (requests.length > 0) {
+      await docs.documents.batchUpdate({
+        documentId,
+        requestBody: {
+          requests
+        }
+      });
+    }
+
+    // Make the document publicly readable (anyone with the link can view)
+    await drive.permissions.create({
+      fileId: documentId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      }
+    });
+
+    const docUrl = `https://docs.google.com/document/d/${documentId}/edit`;
+
+    res.json({
+      success: true,
+      message: 'Document created successfully',
+      documentId,
+      url: docUrl,
+      title
+    });
+  } catch (error: any) {
+    console.error('Error exporting to Google Docs:', error);
+    res.status(500).json({
+      error: error.message,
+      details: error.response?.data || error.stack
+    });
   }
 });
 

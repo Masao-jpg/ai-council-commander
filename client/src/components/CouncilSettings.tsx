@@ -4,7 +4,7 @@ import type { CouncilMode } from '../types';
 import { MODE_INFO } from '../types';
 
 interface CouncilSettingsProps {
-  onStartDebate: (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation') => void;
+  onStartDebate: (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation', startPhase: number) => void;
   isDebating: boolean;
 }
 
@@ -12,6 +12,7 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
   const [theme, setTheme] = useState('');
   const [mode, setMode] = useState<CouncilMode>('free');
   const [outputMode, setOutputMode] = useState<'implementation' | 'documentation'>('implementation');
+  const [startPhase, setStartPhase] = useState<number>(1);
   const [isExpanded, setIsExpanded] = useState(true);
 
   // Auto-collapse on mobile when debate starts
@@ -24,7 +25,9 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (theme.trim()) {
-      onStartDebate(theme, mode, outputMode);
+      // Free mode always starts from phase 1
+      const actualStartPhase = mode === 'free' ? 1 : startPhase;
+      onStartDebate(theme, mode, outputMode, actualStartPhase);
     }
   };
 
@@ -96,6 +99,41 @@ export default function CouncilSettings({ onStartDebate, isDebating }: CouncilSe
             ))}
           </div>
         </div>
+
+        {/* Phase Selection - Only for non-free modes */}
+        {mode !== 'free' && (
+          <div>
+            <label className="block text-base md:text-xs font-medium mb-2 text-gray-300">
+              開始フェーズ
+            </label>
+            <div className="grid grid-cols-5 gap-1.5 md:gap-2">
+              {[1, 2, 3, 4, 5].map((phase) => {
+                const phaseNames = ['情報収集', '発散', '構造化', '生成', '洗練'];
+                return (
+                  <label
+                    key={phase}
+                    className={`flex flex-col items-center p-2 md:p-1.5 border-2 rounded-lg cursor-pointer transition-all ${
+                      startPhase === phase
+                        ? 'border-green-500 bg-green-500 bg-opacity-20'
+                        : 'border-gray-600 hover:border-gray-500'
+                    } ${isDebating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      value={phase}
+                      checked={startPhase === phase}
+                      onChange={(e) => setStartPhase(Number(e.target.value))}
+                      className="hidden"
+                      disabled={isDebating}
+                    />
+                    <span className="text-lg md:text-base font-bold">P{phase}</span>
+                    <span className="text-xs text-gray-400 hidden md:block">{phaseNames[phase - 1]}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Theme Input - Compact on mobile */}
         <div>

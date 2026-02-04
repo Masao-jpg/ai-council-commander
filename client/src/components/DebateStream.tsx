@@ -87,6 +87,7 @@ export default function DebateStream({
           theme,
           mode,
           outputMode,
+          startPhase: currentPhase,
         }),
       });
 

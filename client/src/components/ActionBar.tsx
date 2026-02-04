@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Play, Download, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { Play, Download, CheckCircle, AlertCircle, FileText, FileSpreadsheet } from 'lucide-react';
+import { getApiUrl } from '../config';
 
 interface ActionBarProps {
   plan: string;
@@ -112,6 +113,52 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
     }
   };
 
+  const handleExportToGoogleDocs = async () => {
+    if (isDebating) {
+      setResult({ type: 'error', message: '議論が終了するまでお待ちください' });
+      return;
+    }
+
+    setIsExecuting(true);
+    setResult(null);
+
+    try {
+      const response = await fetch(getApiUrl('/api/action/export-to-google-docs'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: plan,
+          title: theme || 'AI Council Commander - 議論結果'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResult({
+          type: 'success',
+          message: `Google Docsを作成しました！`,
+        });
+        // Open the document in a new tab
+        window.open(data.url, '_blank');
+      } else {
+        if (data.setupInstructions) {
+          setResult({
+            type: 'error',
+            message: 'Google Docs未設定。コンソールで設定手順を確認してください。'
+          });
+          console.error('Google Docs Setup Required:', data.setupInstructions);
+        } else {
+          setResult({ type: 'error', message: data.error || 'エラーが発生しました' });
+        }
+      }
+    } catch (error) {
+      setResult({ type: 'error', message: '通信エラーが発生しました' });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   return (
     <div className="bg-gray-800 border-t border-gray-700 px-3 py-3 md:px-6 md:py-4">
       <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
@@ -147,6 +194,16 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
             <FileText className="w-4 h-4" />
             <span className="hidden md:inline">Export Memo</span>
             <span className="md:hidden">Memo</span>
+          </button>
+
+          <button
+            onClick={handleExportToGoogleDocs}
+            disabled={isDebating || isExecuting}
+            className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span className="hidden md:inline">Google Docs</span>
+            <span className="md:hidden">GDocs</span>
           </button>
         </div>
 

@@ -3,3 +3,7 @@ dist/
 .env
 *.log
 .DS_Store
+
+# Google Service Account credentials
+google-credentials.json
+*-credentials.json

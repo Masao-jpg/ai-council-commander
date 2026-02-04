@@ -13,6 +13,11 @@ server/dist/
 .env.local
 server/.env
 
+# Google Service Account credentials
+google-credentials.json
+server/google-credentials.json
+*-credentials.json
+
 # Logs
 *.log
 npm-debug.log*
