@@ -246,7 +246,9 @@ router.post('/start', async (req, res) => {
       actualStepTurns: 0,
       turnsSinceLastFacilitator: 0,
       stepExtended: false,
-      proposedExtensionTurns: 0
+      proposedExtensionTurns: 0,
+      autoProgress: true,  // デフォルトで自動進行ON
+      lastUserQuestion: ''
     };
 
     debateSessions.set(sessionId, session);
