@@ -432,7 +432,12 @@ router.post('/next-turn', async (req, res) => {
         contextPrompt += `\n【重要】必要に応じて ---PLAN_UPDATE--- で囲んだMarkdown形式の計画書を更新してください。\n`;
       }
 
-      contextPrompt += `\nあなた（${agentConfig.name}）の意見を述べてください。現在 Turn ${session.currentTurn}/${currentPhase.totalTurns} です。`;
+      // ステップ単位でのターン表示
+      if (session.currentStep && session.estimatedStepTurns > 0) {
+        contextPrompt += `\nあなた（${agentConfig.name}）の意見を述べてください。現在ステップ ${session.currentStep}（${session.currentStepName}）: ${session.actualStepTurns}/${session.estimatedStepTurns} ターンです。`;
+      } else {
+        contextPrompt += `\nあなた（${agentConfig.name}）の意見を述べてください。Phase ${session.currentPhase} Turn ${session.currentTurn} です。`;
+      }
 
       const result = await model.generateContent(contextPrompt);
       const response = result.response;
