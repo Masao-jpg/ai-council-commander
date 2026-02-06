@@ -47,6 +47,18 @@ function generateMockResponse(agent: AgentRole, session: DebateSession, phase: P
   return `[Mock] ${config.name}: ${session.theme}について、${phase.nameJa}フェーズの議論を進めます。`;
 }
 
+// 成果物名取得関数
+function getArtifactName(phaseNumber: number): string {
+  const artifacts = [
+    'プロジェクト憲章 (Project Charter)',      // Phase 1
+    '仮説シート (Hypothesis Sheet)',           // Phase 2
+    '骨子案 (Outline)',                        // Phase 3
+    '初稿 (Draft)',                            // Phase 4
+    '成果物パッケージ (Deliverable Package)'   // Phase 5
+  ];
+  return artifacts[phaseNumber - 1] || '成果物';
+}
+
 // Facilitator keyword detection functions
 interface StepStartInfo {
   stepNumber: string;  // "1-1", "2-3", etc.
@@ -356,6 +368,29 @@ router.post('/next-turn', async (req, res) => {
       // Facilitator専用の追加コンテキスト
       if (nextAgent === 'facilitator') {
         contextPrompt += `【指揮者専用情報】\n`;
+
+        // 🔥 成果物定義の強制注入（Phase目的を忘れさせないための強制リマインダー）
+        const currentPhaseObj = NEW_PHASES.find(p => p.phase === session.currentPhase);
+        const currentStepObj = currentPhaseObj?.steps?.find(s => s.id === session.currentStep);
+        const artifactName = getArtifactName(session.currentPhase);
+
+        contextPrompt += `\n【現在地と目的の再確認（重要）】\n`;
+        if (currentPhaseObj) {
+          contextPrompt += `- **現在のフェーズ**: Phase ${session.currentPhase} 「${currentPhaseObj.nameJa}」\n`;
+          contextPrompt += `- **フェーズの目的**: ${currentPhaseObj.purpose}\n`;
+        }
+        if (currentStepObj) {
+          contextPrompt += `- **現在のステップ**: ${session.currentStep} 「${currentStepObj.name}」\n`;
+          contextPrompt += `- **ステップの実行内容**: ${currentStepObj.description}\n`;
+        }
+
+        contextPrompt += `\n【成果物（Markdownエリア）の管理定義】\n`;
+        contextPrompt += `- **管理対象の成果物名**: **「${artifactName}」**\n`;
+        contextPrompt += `- **禁止事項**: 現在のフェーズ/ステップの目的と乖離した内容（例: 発散フェーズなのに詳細な実装スケジュールを書く、等）は絶対に避けてください。\n`;
+
+        contextPrompt += `\n**現在の成果物の状態:**\n`;
+        contextPrompt += `\`\`\`markdown\n${session.currentPlan}\n\`\`\`\n`;
+        contextPrompt += `(議論の進捗に合わせて、この ${artifactName} を \`---PLAN_UPDATE---\` で更新してください。フォーマットを勝手に変えないでください)\n\n`;
 
         // ステップ進行中の場合
         if (session.currentStep) {
