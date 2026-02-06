@@ -44,7 +44,19 @@ export const AGENT_CONFIGS: Record<AgentRole, AgentConfig> = {
     emoji: '⚪',
     color: 'white',
     role: '指揮者・進行管理',
-    systemPrompt: `あなたは Facilitator（指揮者）です。
+    systemPrompt: `あなたは Facilitator（指揮者）です。議論の中身には深入りせず、プロセスの管理に徹してください。
+
+【最重要責務：成果物定義の死守】
+各フェーズとステップには、明確な「成果物定義（Output Definition）」が設定されています。
+あなたの仕事は、会話を盛り上げることではなく、**定められた目次構成（ステップID）を一つずつ確実に埋めていくこと**です。
+
+【進行ルール】
+1. **ステップ順守**: 必ず定義されたステップ順（例: 1-0 -> 1-1 -> ...）に進めてください。ステップを飛ばしたり、勝手に統合してはいけません。
+2. **完了判定**: 現在のステップの目的（description）が十分に達成されたと判断できるまで、次のステップに進まないでください。情報不足ならエージェントに追加質問させてください。
+3. **成果物確認**: フェーズ終了時には「成果物（例：プロジェクト憲章）」が完成している必要があります。
+4. **介入**: 議論が脱線したり、ステップの目的と違う話を始めたら、即座に「今はステップ[ID]の話をしています」と軌道修正してください。
+
+あなたは「議長」であり、成果物の「編集長」です。ぬるい進行は許されません。
 
 【基本原則】
 「議論の中身（アイデア）には介入せず、場の進行管理に徹する」
@@ -448,15 +460,15 @@ C) その他（自由記入）
   }
 };
 
-// 新しい5フェーズ構造
+// 新しい5フェーズ構造（成果物定義を強化）
 export const NEW_PHASES: PhaseConfig[] = [
   {
     phase: 1,
     name: 'Define',
-    nameJa: '定義（情報収集）',
-    purpose: 'プロジェクト憲章の策定（Why/What/制約の定義）',
-    discussionStyle: '現実と理想のすり合わせ会議',
-    totalTurns: 2000,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    nameJa: '定義',
+    purpose: '成果物「プロジェクト憲章」の作成。目的と制約の合意形成。',
+    discussionStyle: '事実確認と価値観のすり合わせ',
+    totalTurns: 2000,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'futurePotentialSeeker',
@@ -466,58 +478,70 @@ export const NEW_PHASES: PhaseConfig[] = [
     ],
     steps: [
       { id: '1-0', name: '初期ヒアリング', description: '議論開始前の基本的な背景・目的の確認' },
-      { id: '1-1', name: '全体目的 (Why)', description: 'この取り組みが目指す長期的なビジョンや理想の姿' },
-      { id: '1-2', name: 'セッションゴール (What)', description: '今回の議論で作成する具体的な成果物の定義' },
-      { id: '1-3', name: '客観情報', description: '収集した事実、データ、現在の状況' },
-      { id: '1-4', name: '主観情報', description: '関係者の想い、価値観、懸念事項' },
-      { id: '1-5', name: '制約条件', description: '時間、お金、利用可能なものなど' }
+      { id: '1-1', name: '全体目的 (Why)', description: 'このプロジェクトが目指す長期的なビジョンを言語化する' },
+      { id: '1-2', name: 'セッションゴール (What)', description: '今回の議論で作成する具体的な成果物の定義を決める' },
+      { id: '1-3', name: '客観情報', description: '事実、データ、市場環境などの客観的事実を洗い出す' },
+      { id: '1-4', name: '主観情報', description: '関係者の想い、価値観、懸念事項などの主観的感情を共有する' },
+      { id: '1-5', name: '制約条件', description: '予算、期限、リソースなどの動かせない条件を確定する' }
     ]
   },
   {
     phase: 2,
     name: 'Develop',
     nameJa: '発散',
-    purpose: '仮説シートの作成（アイデアの最大化）',
-    discussionStyle: '批判禁止のブレインストーミング',
+    purpose: '成果物「仮説シート」の作成。可能性の最大化と有望な選択肢の抽出（※決定は禁止）',
+    discussionStyle: '批判禁止・結論禁止のブレインストーミング',
     totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
-      'innovationCatalyst',
+      'innovationCatalyst', // このフェーズの主役
       'futurePotentialSeeker',
       'userValueAdvocate',
       'logicalConsistencyChecker'
     ],
     steps: [
-      { id: '2-1', name: '可能性リスト', description: 'ブレインストーミングで出た全アイデアの一覧' },
-      { id: '2-2', name: '拡張された視点', description: 'フレームワーク等を活用して得られた新たな視点や気づき' },
-      { id: '2-3', name: '有望な仮説', description: '特に有望ないくつかのアイデアについて、背景・内容・想定される結果を記述したもの' }
+      {
+        id: '2-1',
+        name: '可能性の極大化リスト',
+        description: '現実性を無視して、最低20個以上の異なるアプローチやアイデアを列挙する。既存の枠組みを意図的に壊す案を含めること。'
+      },
+      {
+        id: '2-2',
+        name: '視点の転換と拡張',
+        description: '「制約が逆だったら？」「全く別の業界なら？」など、強制的な視点変更を用いてアイデアの幅を広げる。'
+      },
+      {
+        id: '2-3',
+        name: '複数の仮説シナリオ',
+        description: '1つに絞らず、方向性の異なる3〜5つの有力なパターン（仮説セット）を提示する。決定は次のフェーズに委ねる。'
+      }
     ]
   },
   {
     phase: 3,
     name: 'Structure',
     nameJa: '構造化',
-    purpose: '骨子案の作成（選択と集中・設計）',
-    discussionStyle: '戦略的選定会議',
+    purpose: '成果物「骨子案」の作成。方針決定と詳細設計。',
+    discussionStyle: '論理的な比較検討と意思決定',
     totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
+      'logicalConsistencyChecker',
       'constraintChecker',
       'constructiveCritic',
-      'logicalConsistencyChecker',
       'userValueAdvocate'
     ],
     steps: [
-      { id: '3-1', name: '評価基準', description: 'どの仮説を選択するかの判断軸' },
-      { id: '3-2', name: '決定方針', description: '評価基準に基づき、最終的に選択された方針とその理由' },
-      { id: '3-3', name: '成果物の詳細な骨格', description: '決定方針に基づく、最終成果物の章立て・見出し・段落構成' }
+      { id: '3-1', name: '評価基準', description: '仮説の中からどれを選択するか、具体的な判断軸（評価基準）を定める' },
+      { id: '3-2', name: '決定方針', description: '評価基準に基づき、最終的に採用する方針を決定し、その理由を明記する' },
+      { id: '3-3', name: '成果物の詳細な骨格', description: '決定した方針に基づき、最終成果物の章立て・見出し・段落構成を設計する' }
     ]
   },
   {
     phase: 4,
     name: 'Generate',
     nameJa: '生成',
-    purpose: '初稿の執筆（コンテンツ制作）',
+    purpose: '成果物「初稿」の作成。骨子に基づく実制作。',
     discussionStyle: 'クリエイティブな共同執筆',
     totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
@@ -528,27 +552,27 @@ export const NEW_PHASES: PhaseConfig[] = [
       'logicalConsistencyChecker'
     ],
     steps: [
-      { id: '4-1', name: '骨格に基づく本文', description: '骨子案に沿って一通り執筆された文章やコンテンツ' },
-      { id: '4-2', name: '具体例・データ', description: '本文の説得力を高めるために追記されたデータや事例' }
+      { id: '4-1', name: '骨格に基づく本文', description: '骨子案に沿って、一通りの文章やコンテンツを執筆・生成する' },
+      { id: '4-2', name: '具体例・データ', description: '本文の説得力を高めるため、具体的なデータや事例、エピソードを追記する' }
     ]
   },
   {
     phase: 5,
     name: 'Refine',
     nameJa: '洗練',
-    purpose: '成果物パッケージの完成（品質保証）',
-    discussionStyle: '最終品質監査（QA）',
+    purpose: '成果物「成果物パッケージ」の作成。品質保証と納品準備。',
+    discussionStyle: '厳格なレビューと修正',
     totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'constructiveCritic',
-      'constraintChecker',
       'logicalConsistencyChecker',
-      'userValueAdvocate'
+      'userValueAdvocate',
+      'constraintChecker'
     ],
     steps: [
-      { id: '5-1', name: '検証ログ', description: '抜け漏れや矛盾のチェックリストと、それに対する修正履歴' },
-      { id: '5-2', name: '最終成果物', description: 'レビューと修正が完了し、納品できる状態の完成品' }
+      { id: '5-1', name: '検証ログ', description: '抜け漏れや矛盾がないかチェックリストを用いて確認し、修正履歴を記録する' },
+      { id: '5-2', name: '最終成果物', description: 'レビューを反映し、これまでの全中間成果物を含めて納品可能な状態にパッケージ化する' }
     ]
   }
 ];
