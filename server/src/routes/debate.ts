@@ -146,16 +146,31 @@ interface StepStartInfo {
 }
 
 function detectStepStart(text: string): StepStartInfo | null {
-  const regex = /---STEP_START---\s*ステップ\s*([0-9\-]+)\s*[:：]\s*([^\n]+)\s*見積もりターン数\s*[:：]\s*(\d+)\s*ターン\s*---STEP_START---/;
-  const match = text.match(regex);
-  if (match) {
-    return {
-      stepNumber: match[1].trim(),
-      stepName: match[2].trim(),
-      estimatedTurns: parseInt(match[3], 10)
-    };
+  // 1. タグがなければ即終了
+  if (!text.includes('---STEP_START---')) {
+    return null;
   }
-  return null;
+
+  console.log('🔍 STEP_START tag detected. parsing details (lax mode)...');
+
+  // 2. 情報を抽出してみる（失敗してもOK）
+  // "Step 1-1" や "ステップ 1-1"
+  const stepNumMatch = text.match(/(?:ステップ|Step)\s*([0-9]+-[0-9]+)/i);
+  // "Estimate: 10" や "10 turns" や "見積もり: 10"
+  const turnMatch = text.match(/(?:見積もり|Estimate|Turns?).*?(\d+)/i);
+  // コロンの後の名前
+  const nameMatch = text.match(/(?:ステップ|Step)\s*[0-9]+-[0-9]+\s*[:：]\s*([^\n]+)/i);
+
+  return {
+    // 見つかればその番号、なければ null (呼び出し元で session.currentStep を使う)
+    stepNumber: stepNumMatch ? stepNumMatch[1] : null,
+
+    // 見つかればその名前、なければ null
+    stepName: nameMatch ? nameMatch[1].trim().replace(/\*\*/g, '').replace(/【.*?】/g, '').trim() : null,
+
+    // 見つかればその数字、なければデフォルト値8
+    estimatedTurns: turnMatch ? parseInt(turnMatch[1], 10) : 8
+  } as any;
 }
 
 function detectStepCompleted(text: string): { stepNumber: string; stepName: string } | null {
@@ -668,9 +683,15 @@ router.post('/next-turn', async (req, res) => {
       // STEP_START検出
       const stepStart = detectStepStart(text);
       if (stepStart) {
-        console.log(`🎯 STEP_START detected: ${stepStart.stepNumber} - ${stepStart.stepName} (${stepStart.estimatedTurns} turns)`);
-        session.currentStep = stepStart.stepNumber;
-        session.currentStepName = stepStart.stepName;
+        // 【重要】情報が欠けていても、現在のセッション情報を正として補完する
+        // これにより「タグはあるのにフォーマット違いで開始しない」を防ぐ
+        const stepNumber = stepStart.stepNumber || session.currentStep || '1-1';
+        const stepName = stepStart.stepName || session.currentStepName || 'ステップ開始';
+
+        console.log(`🎯 STEP_START confirmed: ${stepNumber} - ${stepName} (${stepStart.estimatedTurns} turns)`);
+
+        session.currentStep = stepNumber;
+        session.currentStepName = stepName;
         session.estimatedStepTurns = stepStart.estimatedTurns;
         session.actualStepTurns = 0;
         session.stepExtended = false; // 新しいステップなので延長フラグをリセット
@@ -678,14 +699,20 @@ router.post('/next-turn', async (req, res) => {
 
         // 🔥 ステップ開始時にデッキを補充（無限ループ防止）
         // Facilitatorは今喋ったばかりなので、次はメンバーから始める
-        const currentPhaseConfig = NEW_PHASES[session.currentPhase - 1];
-        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
-        console.log(`🔄 Deck regenerated for Step ${stepStart.stepNumber}. Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
+        const currentPhaseConfig = NEW_PHASES.find(p => p.phase === session.currentPhase);
+        if (currentPhaseConfig) {
+          session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
+          console.log(`🔄 Deck regenerated for Step ${stepNumber}. Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
+        } else {
+          // 安全策: フェーズ設定が見つからない場合はFacilitatorを入れる
+          session.speakerDeck = ['facilitator'];
+          console.warn('⚠️ Phase config not found, fallback to facilitator');
+        }
 
         stepUpdate = {
           type: 'start',
-          step: stepStart.stepNumber,
-          stepName: stepStart.stepName,
+          step: stepNumber,
+          stepName: stepName,
           estimatedTurns: stepStart.estimatedTurns
         };
       }
