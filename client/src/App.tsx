@@ -8,38 +8,41 @@ import type { DebateState, Message, CouncilMode } from './types';
 import { saveSessionInfo, loadSessionInfo, clearSessionInfo } from './utils/storage';
 import { getApiUrl } from './config';
 
+// 初期状態を定数として定義（リセット時に再利用）
+const INITIAL_DEBATE_STATE: DebateState = {
+  sessionId: '',
+  theme: '',
+  mode: 'free',
+  outputMode: 'implementation',
+  messages: [],
+  currentPlan: '# AI Council Commander\n\n議論を開始すると、ここに計画が表示されます。',
+  currentMemo: '# 議事メモ\n\n議論を開始すると、ここに議事メモが表示されます。',
+  isDebating: false,
+  currentPhase: 0,
+  currentPhaseName: '',
+  currentStep: '',
+  currentStepName: '',
+  currentTurn: 0,
+  totalTurnsInPhase: 0,
+  estimatedStepTurns: 0,
+  actualStepTurns: 0,
+  isWaitingForPhaseTransition: false,
+  isWaitingForStepTransition: false,
+  completedStep: '',
+  completedStepName: '',
+  isWaitingForUserResponse: false,
+  currentUserQuestion: '',
+  userResponses: [],
+  userPhaseInstructions: {},
+  extensionCount: 0,
+};
+
 function App() {
-  const [debateState, setDebateState] = useState<DebateState>({
-    sessionId: '',
-    theme: '',
-    mode: 'free',
-    outputMode: 'implementation',
-    messages: [],
-    currentPlan: '# AI Council Commander\n\n議論を開始すると、ここに計画が表示されます。',
-    currentMemo: '# 議事メモ\n\n議論を開始すると、ここに議事メモが表示されます。',
-    isDebating: false,
-    currentPhase: 0,
-    currentPhaseName: '',
-    currentStep: '',
-    currentStepName: '',
-    currentTurn: 0,
-    totalTurnsInPhase: 0,
-    estimatedStepTurns: 0,
-    actualStepTurns: 0,
-    isWaitingForPhaseTransition: false,
-    isWaitingForStepTransition: false,
-    completedStep: '',
-    completedStepName: '',
-    isWaitingForUserResponse: false,
-    currentUserQuestion: '',
-    userResponses: [],
-    userPhaseInstructions: {},
-    extensionCount: 0,
-  });
+  const [debateState, setDebateState] = useState<DebateState>(INITIAL_DEBATE_STATE);
 
   // 開始Phase番号を保持（Phase 1より前のPhaseを非表示にするため）
-  const [startPhase, setStartPhase] = useState<number>(1);
-  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [_startPhase, setStartPhase] = useState<number>(1);
+  const [_isRestoringSession, setIsRestoringSession] = useState(true);
 
   // 起動時にセッション復元を試みる
   useEffect(() => {
@@ -256,6 +259,13 @@ function App() {
     }));
   };
 
+  const handleAbortSession = () => {
+    if (window.confirm('現在のセッションを終了し、初期画面に戻りますか？\n※現在の議論データは破棄されます。')) {
+      clearSessionInfo();
+      setDebateState(INITIAL_DEBATE_STATE);
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="h-screen bg-gray-900 text-white flex flex-col">
@@ -339,6 +349,7 @@ function App() {
               onWaitingForStepTransition={setWaitingForStepTransition}
               onPhaseInstruction={setPhaseInstruction}
               onDebateEnd={stopDebate}
+              onAbort={handleAbortSession}
             />
           </div>
         </div>

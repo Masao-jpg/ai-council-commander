@@ -59,7 +59,7 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
         .replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '');
-      const filename = `${safeTheme}_${timestamp}.md`;
+      const filename = `${safeTheme}_Plan_${timestamp}.txt`;
 
       // Check if running on native platform (Android/iOS)
       if (Capacitor.isNativePlatform()) {
@@ -81,7 +81,7 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
         console.log('Using Blob download for web');
 
         // Create a blob from the plan content (for web browsers)
-        const blob = new Blob([plan], { type: 'text/markdown;charset=utf-8' });
+        const blob = new Blob([plan], { type: 'text/plain;charset=utf-8' });
         console.log('Blob created', { size: blob.size });
 
         // Create download link
@@ -123,7 +123,7 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
         .replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '');
-      const filename = `${safeTheme}_MEMO_${timestamp}.md`;
+      const filename = `${safeTheme}_Memo_${timestamp}.txt`;
 
       // Check if running on native platform (Android/iOS)
       if (Capacitor.isNativePlatform()) {
@@ -145,7 +145,7 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
         console.log('Using Blob download for web');
 
         // Create a blob from the memo content (for web browsers)
-        const blob = new Blob([memo], { type: 'text/markdown;charset=utf-8' });
+        const blob = new Blob([memo], { type: 'text/plain;charset=utf-8' });
         console.log('Blob created', { size: blob.size });
 
         // Create download link
@@ -195,21 +195,21 @@ export default function ActionBar({ plan, memo, theme, outputMode, isDebating }:
 
           <button
             onClick={handleDownloadPlan}
-            disabled={isDebating || isExecuting}
+            disabled={isExecuting}
             className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden md:inline">計画DL</span>
+            <span className="hidden md:inline">計画DL (.txt)</span>
             <span className="md:hidden">計画</span>
           </button>
 
           <button
             onClick={handleDownloadMemo}
-            disabled={isDebating || isExecuting}
+            disabled={isExecuting}
             className="flex-1 md:flex-none px-3 py-2 md:px-6 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             <FileText className="w-4 h-4" />
-            <span className="hidden md:inline">メモDL</span>
+            <span className="hidden md:inline">メモDL (.txt)</span>
             <span className="md:hidden">メモ</span>
           </button>
         </div>

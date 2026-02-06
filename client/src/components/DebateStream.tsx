@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquare, Loader2, CheckCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Loader2, CheckCircle, RefreshCw, AlertTriangle, XCircle } from 'lucide-react';
 import type { Message, AgentRole, UserResponse } from '../types';
 import { AGENT_INFO } from '../types';
 import UserInputBox from './UserInputBox';
@@ -41,6 +41,7 @@ interface DebateStreamProps {
   onWaitingForStepTransition: (waiting: boolean, step?: string, stepName?: string) => void;
   onPhaseInstruction: (phase: number, instruction: string) => void;
   onDebateEnd: () => void;
+  onAbort: () => void;
 }
 
 export default function DebateStream({
@@ -68,6 +69,7 @@ export default function DebateStream({
   onWaitingForStepTransition,
   onPhaseInstruction,
   onDebateEnd,
+  onAbort,
 }: DebateStreamProps) {
   const [currentAgent, setCurrentAgent] = useState<AgentRole | null>(null);
   const [nextPhaseName, setNextPhaseName] = useState('');
@@ -100,6 +102,14 @@ export default function DebateStream({
       startDebate();
     }
   }, [isDebating, sessionId, currentPhase]);
+
+  // Cleanup on unmount or when debate stops
+  useEffect(() => {
+    return () => {
+      // Mark component as unmounted to prevent state updates
+      isDebatingRef.current = false;
+    };
+  }, []);
 
   const startDebate = async () => {
     try {
@@ -614,6 +624,18 @@ export default function DebateStream({
             <CheckCircle className="w-4 h-4" />
             チェックポイント
           </span>
+        )}
+
+        {/* Abort Button */}
+        {isDebating && (
+          <button
+            onClick={onAbort}
+            className="ml-2 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs md:text-sm font-semibold flex items-center gap-1 transition-colors"
+            title="セッションを終了して初期画面に戻る"
+          >
+            <XCircle className="w-4 h-4" />
+            <span className="hidden md:inline">終了</span>
+          </button>
         )}
       </div>
 
