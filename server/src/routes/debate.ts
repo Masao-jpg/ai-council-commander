@@ -626,6 +626,10 @@ router.post('/next-turn', async (req, res) => {
         session.actualStepTurns = 0;
         session.stepExtended = false;
         session.proposedExtensionTurns = 0;
+
+        // 🔥 デッキをクリアして次のターンでFacilitatorを確実に呼ぶ
+        session.speakerDeck = [];
+        console.log(`🔄 Speaker deck cleared for next step - Facilitator will speak next`);
       }
 
       // STEP_EXTENSION_NEEDED検出
