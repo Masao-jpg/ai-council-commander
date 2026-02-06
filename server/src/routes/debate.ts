@@ -675,6 +675,13 @@ router.post('/next-turn', async (req, res) => {
         session.actualStepTurns = 0;
         session.stepExtended = false; // 新しいステップなので延長フラグをリセット
         session.proposedExtensionTurns = 0;
+
+        // 🔥 ステップ開始時にデッキを補充（無限ループ防止）
+        // Facilitatorは今喋ったばかりなので、次はメンバーから始める
+        const currentPhaseConfig = NEW_PHASES[session.currentPhase - 1];
+        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
+        console.log(`🔄 Deck regenerated for Step ${stepStart.stepNumber}. Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
+
         stepUpdate = {
           type: 'start',
           step: stepStart.stepNumber,
