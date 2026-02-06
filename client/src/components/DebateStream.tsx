@@ -96,7 +96,7 @@ export default function DebateStream({
     if (isDebating && sessionId && messages.length === 0) {
       startDebate();
     }
-  }, [isDebating, sessionId]);
+  }, [isDebating, sessionId, currentPhase]);
 
   const startDebate = async () => {
     try {

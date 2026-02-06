@@ -35,7 +35,10 @@ function App() {
     extensionCount: 0,
   });
 
-  const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation', startPhase: number) => {
+  // 開始Phase番号を保持（Phase 1より前のPhaseを非表示にするため）
+  const [startPhase, setStartPhase] = useState<number>(1);
+
+  const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation', startPhaseNumber: number) => {
     const sessionId = `session_${Date.now()}`;
 
     // Phase configurations
@@ -47,7 +50,10 @@ function App() {
       { phase: 5, nameJa: '洗練', totalTurns: 11 },
     ];
 
-    const initialPhase = phaseConfigs[startPhase - 1];
+    const initialPhase = phaseConfigs[startPhaseNumber - 1];
+
+    // 開始Phase番号を保存（UI表示に使用）
+    setStartPhase(startPhaseNumber);
 
     setDebateState({
       sessionId,
