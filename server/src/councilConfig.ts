@@ -456,7 +456,7 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '定義（情報収集）',
     purpose: 'プロジェクト憲章の策定（Why/What/制約の定義）',
     discussionStyle: '現実と理想のすり合わせ会議',
-    totalTurns: 20,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 2000,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'futurePotentialSeeker',
@@ -479,7 +479,7 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '発散',
     purpose: '仮説シートの作成（アイデアの最大化）',
     discussionStyle: '批判禁止のブレインストーミング',
-    totalTurns: 20,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'innovationCatalyst',
@@ -499,7 +499,7 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '構造化',
     purpose: '骨子案の作成（選択と集中・設計）',
     discussionStyle: '戦略的選定会議',
-    totalTurns: 20,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'constraintChecker',
@@ -519,7 +519,7 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '生成',
     purpose: '初稿の執筆（コンテンツ制作）',
     discussionStyle: 'クリエイティブな共同執筆',
-    totalTurns: 20,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'userValueAdvocate',
@@ -538,7 +538,7 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '洗練',
     purpose: '成果物パッケージの完成（品質保証）',
     discussionStyle: '最終品質監査（QA）',
-    totalTurns: 20,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
     participants: [
       'facilitator',
       'constructiveCritic',
