@@ -105,7 +105,7 @@ function detectPhaseCompleted(text: string, currentPhase: number): boolean {
 
 // 議事メモ係用のメモを生成
 function generateSecretaryMemo(session: DebateSession): string {
-  const recentMessages = session.history.slice(-3);
+  const recentMessages = session.history.slice(-1000);
   let memo = '---MEMO_UPDATE---\n';
 
   recentMessages.forEach((msg) => {
@@ -419,7 +419,7 @@ router.post('/next-turn', async (req, res) => {
 
       if (session.history.length > 0) {
         contextPrompt += `【これまでの議論】\n`;
-        session.history.slice(-10).forEach((msg) => {
+        session.history.slice(-1000).forEach((msg) => {
           const config = AGENT_CONFIGS[msg.agent];
           contextPrompt += `${config.emoji} ${config.name}: ${msg.content}\n\n`;
         });
