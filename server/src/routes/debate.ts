@@ -301,6 +301,83 @@ function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = 
   return finalDeck;
 }
 
+// --- セッション復元用エンドポイント ---
+router.post('/restore', async (req, res) => {
+  try {
+    const {
+      sessionId,
+      theme,
+      mode,
+      outputMode,
+      currentPhase,
+      history,
+      currentStep,
+      currentStepName,
+      estimatedStepTurns,
+      actualStepTurns,
+      currentPlan
+    } = req.body;
+
+    console.log(`♻️ Restoring session: ${sessionId}`);
+
+    if (!theme) {
+      return res.status(400).json({ error: 'Theme is required for restoration' });
+    }
+
+    // フェーズ情報の取得
+    const phaseIndex = (currentPhase && currentPhase >= 1 && currentPhase <= NEW_PHASES.length)
+      ? currentPhase - 1
+      : 0;
+    const phaseConfig = NEW_PHASES[phaseIndex];
+
+    // デッキの再生成（Facilitatorを先頭に）
+    const speakerDeck = createSpeakerDeck(phaseConfig, true);
+
+    // 履歴データの整形（フロントエンド形式 → バックエンド形式）
+    const formattedHistory = history ? history.map((msg: any) => ({
+      agent: msg.agent,
+      content: msg.content
+    })) : [];
+
+    const session: DebateSession = {
+      sessionId,
+      theme,
+      mode: mode || 'free',
+      outputMode: outputMode || 'implementation',
+      currentPhase: currentPhase || 1,
+      currentTurn: formattedHistory.length, // 履歴数からターン数を推測
+      speakerDeck,
+      history: formattedHistory,
+      currentPlan: currentPlan || `# ${theme}\n\n議論を復元しました...`,
+      currentMemo: '',
+      extensionCount: 0,
+      currentStep: currentStep || '',
+      currentStepName: currentStepName || '',
+      estimatedStepTurns: estimatedStepTurns || 0,
+      actualStepTurns: actualStepTurns || 0,
+      turnsSinceLastFacilitator: 0,
+      stepExtended: false,
+      proposedExtensionTurns: 0,
+      autoProgress: true,
+      lastUserQuestion: ''
+    };
+
+    debateSessions.set(sessionId, session);
+    scheduleSave();
+
+    console.log(`✅ Session ${sessionId} restored successfully with ${formattedHistory.length} history items.`);
+
+    res.json({
+      success: true,
+      message: 'Session restored successfully',
+      sessionId
+    });
+  } catch (error: any) {
+    console.error('❌ Error restoring session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // セッション初期化
 router.post('/start', async (req, res) => {
   try {

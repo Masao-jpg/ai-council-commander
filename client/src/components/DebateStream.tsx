@@ -177,6 +177,45 @@ export default function DebateStream({
         body: JSON.stringify(requestBody),
       });
 
+      // レスポンスが404（Session not found）の場合の自動復旧処理
+      if (response.status === 404) {
+        console.warn('⚠️ Session not found (404). Attempting to restore session...');
+
+        // 現在のフロントエンドの状態を使ってセッションを復元
+        const restoreResponse = await fetch(getApiUrl('/api/debate/restore'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            theme,
+            mode,
+            outputMode,
+            currentPhase,
+            // 直近の履歴20件程度を送ってコンテキストを維持
+            history: messages.slice(-20).map(m => ({
+              agent: m.agent,
+              content: m.content
+            })),
+            currentStep: isWaitingForStepTransition ? completedStep : '',
+            currentStepName: isWaitingForStepTransition ? completedStepName : '',
+            estimatedStepTurns: 0,
+            actualStepTurns: 0,
+            currentPlan: messages.length > 0 ? undefined : ''
+          }),
+        });
+
+        const restoreData = await restoreResponse.json();
+
+        if (restoreData.success) {
+          console.log('✅ Session restored! Retrying next turn...');
+          // 1秒待ってからリトライ（ユーザーの回答情報も引き継ぐ）
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return runNextTurn(immediateUserResponse);
+        } else {
+          throw new Error('セッションの復元に失敗しました: ' + (restoreData.error || 'Unknown error'));
+        }
+      }
+
       const data = await response.json();
       console.log('✅ Received response:', data);
       console.log('🔍 Response keys:', Object.keys(data));
@@ -402,7 +441,15 @@ export default function DebateStream({
 
       // エラーメッセージを状態に保存（alertやonDebateEndは呼ばない）
       const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      setErrorState(errorMessage);
+
+      // セッション復元失敗の場合は、ユーザーにリロードを促す
+      if (errorMessage.includes('セッションの復元に失敗しました')) {
+        setErrorState('セッションが切れましたが、復元に失敗しました。ページをリロードしてください。');
+      } else if (errorMessage.includes('Session not found')) {
+        setErrorState('セッションが見つかりません。自動復元を試みています...');
+      } else {
+        setErrorState(errorMessage);
+      }
 
       // onDebateEnd() は呼ばない！これで状態を維持する
     }
