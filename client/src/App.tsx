@@ -7,6 +7,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import type { DebateState, Message, CouncilMode } from './types';
 import { saveSessionInfo, loadSessionInfo, clearSessionInfo } from './utils/storage';
 import { getApiUrl } from './config';
+import { BackgroundMode } from '@anuradev/capacitor-background-mode';
+import { Capacitor } from '@capacitor/core';
 
 // 初期状態を定数として定義（リセット時に再利用）
 const INITIAL_DEBATE_STATE: DebateState = {
@@ -119,6 +121,41 @@ function App() {
       });
     }
   }, [debateState.sessionId, debateState.theme, debateState.mode, debateState.outputMode, debateState.currentPhase]);
+
+  // バックグラウンドモードの制御
+  useEffect(() => {
+    const handleBackgroundMode = async () => {
+      // ネイティブアプリ（iOS/Android）の場合のみ実行
+      if (Capacitor.isNativePlatform()) {
+        try {
+          if (debateState.isDebating) {
+            // 議論中はバックグラウンドモードを有効化
+            // Android用の設定を含めて有効化
+            const settings = Capacitor.getPlatform() === 'android' ? {
+              title: "AI評議会 進行中",
+              text: "バックグラウンドで議論を継続しています...",
+              icon: "ic_launcher",
+              color: "0044FF",
+              resume: true,
+              hidden: false,
+              bigText: true
+            } : {};
+
+            await BackgroundMode.enable(settings);
+            console.log('📱 Background Mode Enabled');
+          } else {
+            // 議論終了時は無効化
+            await BackgroundMode.disable();
+            console.log('📱 Background Mode Disabled');
+          }
+        } catch (err) {
+          console.error('Failed to toggle background mode:', err);
+        }
+      }
+    };
+
+    handleBackgroundMode();
+  }, [debateState.isDebating]);
 
   const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation', startPhaseNumber: number) => {
     // 新規開始時は前のセッションをクリア

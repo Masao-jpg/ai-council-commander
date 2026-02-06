@@ -10,6 +10,7 @@
     "android:open": "npx cap open android"
   },
   "dependencies": {
+    "@anuradev/capacitor-background-mode": "^7.2.1",
     "@capacitor/android": "^8.0.2",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
