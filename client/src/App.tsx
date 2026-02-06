@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CouncilSettings from './components/CouncilSettings';
 import DebateStream from './components/DebateStream';
 import ArtifactPanel from './components/ArtifactPanel';
 import ActionBar from './components/ActionBar';
 import ErrorBoundary from './components/ErrorBoundary';
 import type { DebateState, Message, CouncilMode } from './types';
+import { saveSessionInfo, loadSessionInfo, clearSessionInfo } from './utils/storage';
+import { getApiUrl } from './config';
 
 function App() {
   const [debateState, setDebateState] = useState<DebateState>({
@@ -37,8 +39,88 @@ function App() {
 
   // 開始Phase番号を保持（Phase 1より前のPhaseを非表示にするため）
   const [startPhase, setStartPhase] = useState<number>(1);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+
+  // 起動時にセッション復元を試みる
+  useEffect(() => {
+    const restoreSession = async () => {
+      const savedSession = loadSessionInfo();
+      if (savedSession) {
+        console.log('🔄 Attempting to restore session:', savedSession.sessionId);
+
+        try {
+          const response = await fetch(getApiUrl(`/api/debate/session/${savedSession.sessionId}`));
+          const data = await response.json();
+
+          if (data.success && data.session) {
+            console.log('✅ Session restored successfully');
+
+            // Date型の復元
+            const messages = data.session.messages.map((m: any) => ({
+              ...m,
+              timestamp: new Date(m.timestamp)
+            }));
+
+            setDebateState({
+              sessionId: data.session.sessionId,
+              theme: data.session.theme,
+              mode: data.session.mode,
+              outputMode: data.session.outputMode,
+              messages: messages,
+              currentPlan: data.session.currentPlan,
+              currentMemo: data.session.currentMemo,
+              isDebating: true,
+              currentPhase: data.session.currentPhase,
+              currentPhaseName: data.session.currentPhaseName,
+              currentStep: data.session.currentStep,
+              currentStepName: data.session.currentStepName,
+              currentTurn: data.session.currentTurn,
+              totalTurnsInPhase: data.session.totalTurnsInPhase,
+              estimatedStepTurns: data.session.estimatedStepTurns,
+              actualStepTurns: data.session.actualStepTurns,
+              isWaitingForPhaseTransition: false,
+              isWaitingForStepTransition: false,
+              completedStep: '',
+              completedStepName: '',
+              isWaitingForUserResponse: false,
+              currentUserQuestion: '',
+              userResponses: [],
+              userPhaseInstructions: {},
+              extensionCount: 0,
+            });
+          } else {
+            console.log('⚠️ Session not found on server, clearing local storage');
+            clearSessionInfo();
+          }
+        } catch (error) {
+          console.error('❌ Failed to restore session:', error);
+          clearSessionInfo();
+        }
+      }
+
+      setIsRestoringSession(false);
+    };
+
+    restoreSession();
+  }, []);
+
+  // セッションIDが変わったらLocalStorageに保存
+  useEffect(() => {
+    if (debateState.sessionId && debateState.isDebating) {
+      saveSessionInfo({
+        sessionId: debateState.sessionId,
+        theme: debateState.theme,
+        mode: debateState.mode,
+        outputMode: debateState.outputMode,
+        currentPhase: debateState.currentPhase,
+      });
+    }
+  }, [debateState.sessionId, debateState.theme, debateState.mode, debateState.outputMode, debateState.currentPhase]);
 
   const handleStartDebate = (theme: string, mode: CouncilMode, outputMode: 'implementation' | 'documentation', startPhaseNumber: number) => {
+    // 新規開始時は前のセッションをクリア
+    clearSessionInfo();
+
     const sessionId = `session_${Date.now()}`;
 
     // Phase configurations

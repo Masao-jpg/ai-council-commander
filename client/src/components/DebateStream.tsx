@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquare, Loader2, CheckCircle } from 'lucide-react';
+import { MessageSquare, Loader2, CheckCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import type { Message, AgentRole, UserResponse } from '../types';
 import { AGENT_INFO } from '../types';
 import UserInputBox from './UserInputBox';
@@ -74,6 +74,9 @@ export default function DebateStream({
   const [isWaitingForExtensionJudgment, setIsWaitingForExtensionJudgment] = useState(false);
   const [extensionStepInfo, setExtensionStepInfo] = useState<any>(null);
   const [autoProgress, setAutoProgress] = useState(true); // 自動進行モード（デフォルトON）
+  const [errorState, setErrorState] = useState<string | null>(null); // エラー状態管理
+  const [retryCount, setRetryCount] = useState(0); // リトライ回数
+  const MAX_RETRIES = 3; // 最大リトライ回数
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDebatingRef = useRef(isDebating);
   const isWaitingRef = useRef(isWaitingForPhaseTransition);
@@ -131,6 +134,9 @@ export default function DebateStream({
   };
 
   const runNextTurn = async (immediateUserResponse?: { question: string; answer: string; timestamp: Date }) => {
+    // エラーリセット
+    setErrorState(null);
+
     try {
       // Show loading state
       console.log('🔄 Requesting next turn...');
@@ -383,8 +389,24 @@ export default function DebateStream({
     } catch (error) {
       console.error('❌ Error in next turn:', error);
       setCurrentAgent(null);
-      alert(`エラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}\n\nコンソールを確認してください。`);
-      onDebateEnd();
+
+      // エラーメッセージを状態に保存（alertやonDebateEndは呼ばない）
+      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+      setErrorState(errorMessage);
+
+      // onDebateEnd() は呼ばない！これで状態を維持する
+    }
+  };
+
+  // リトライボタンのハンドラ
+  const handleRetry = () => {
+    if (retryCount < MAX_RETRIES) {
+      console.log(`🔄 Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+      setRetryCount(retryCount + 1);
+      setErrorState(null);
+      runNextTurn();
+    } else {
+      setErrorState(`リトライ上限（${MAX_RETRIES}回）に達しました。しばらく時間をおいてから、ページをリロードしてください。`);
     }
   };
 
@@ -668,6 +690,45 @@ export default function DebateStream({
                 思考中...
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Error UI with Retry Button */}
+        {errorState && (
+          <div className="bg-red-900/50 border-2 border-red-500 rounded-lg p-4 md:p-6 mt-4 animate-in fade-in">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-6 h-6 md:w-5 md:h-5 text-red-300" />
+              <h3 className="text-lg md:text-base font-bold text-red-200">通信エラーが発生しました</h3>
+            </div>
+            <p className="text-sm text-red-200 mb-4 whitespace-pre-wrap">
+              {errorState}
+              {retryCount < MAX_RETRIES && (
+                <>
+                  <br /><br />
+                  議論の内容は保存されています。再試行ボタンを押してください。
+                  {retryCount > 0 && (
+                    <>
+                      <br />
+                      <span className="text-red-300">（リトライ: {retryCount}/{MAX_RETRIES}）</span>
+                    </>
+                  )}
+                </>
+              )}
+            </p>
+            {retryCount < MAX_RETRIES && (
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 px-4 py-3 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-lg font-semibold"
+              >
+                <RefreshCw className="w-5 h-5 md:w-4 md:h-4" />
+                再試行する
+              </button>
+            )}
+            {retryCount >= MAX_RETRIES && (
+              <p className="text-sm text-red-300 mt-2">
+                ℹ️ ブラウザをリロードすると、保存された状態から再開できます。
+              </p>
+            )}
           </div>
         )}
 

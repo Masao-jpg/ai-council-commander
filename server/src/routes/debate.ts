@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   AGENT_CONFIGS,
   NEW_PHASES,
@@ -38,6 +40,83 @@ interface DebateSession {
 }
 
 const debateSessions = new Map<string, DebateSession>();
+
+// --- 永続化機能（非同期・バッチ保存） ---
+const DATA_FILE = path.join(__dirname, '..', 'data', 'sessions.json');
+let saveScheduled = false;
+let saveTimer: NodeJS.Timeout | null = null;
+
+/**
+ * セッションデータをJSONファイルに保存（非同期・バッチ処理）
+ * 頻繁な呼び出しを防ぐため、最後の呼び出しから5秒後に実際の保存を実行
+ */
+function scheduleSave() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+  }
+
+  saveTimer = setTimeout(() => {
+    saveSessionsToDisk();
+    saveTimer = null;
+  }, 5000); // 5秒後に保存（バッチ処理）
+}
+
+/**
+ * 実際の保存処理
+ */
+function saveSessionsToDisk() {
+  try {
+    // データディレクトリの作成（存在しない場合）
+    const dataDir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    // Mapを配列に変換してJSON化
+    const data = JSON.stringify(Array.from(debateSessions.entries()), null, 2);
+    fs.writeFileSync(DATA_FILE, data, 'utf8');
+    console.log(`💾 Sessions saved to disk (${debateSessions.size} sessions)`);
+  } catch (error) {
+    console.error('❌ Failed to save sessions:', error);
+  }
+}
+
+/**
+ * 起動時にセッションデータを復元
+ */
+function loadSessionsFromDisk() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      const entries = JSON.parse(data);
+      entries.forEach(([key, value]: [string, any]) => {
+        debateSessions.set(key, value);
+      });
+      console.log(`✅ Loaded ${debateSessions.size} sessions from disk.`);
+    } else {
+      console.log('ℹ️ No saved sessions found. Starting fresh.');
+    }
+  } catch (error) {
+    console.error('❌ Failed to load sessions:', error);
+  }
+}
+
+// サーバー起動時にデータをロード
+loadSessionsFromDisk();
+
+// プロセス終了時に強制保存
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down... Saving sessions...');
+  saveSessionsToDisk();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Shutting down... Saving sessions...');
+  saveSessionsToDisk();
+  process.exit(0);
+});
+// ----------------------------------------
 
 // モックレスポンス生成関数（新エージェント対応）
 function generateMockResponse(agent: AgentRole, session: DebateSession, phase: PhaseConfig): string {
@@ -264,6 +343,7 @@ router.post('/start', async (req, res) => {
     };
 
     debateSessions.set(sessionId, session);
+    scheduleSave(); // ★追加: 保存スケジュール
 
     res.json({
       success: true,
@@ -583,6 +663,9 @@ router.post('/next-turn', async (req, res) => {
       session.turnsSinceLastFacilitator = 0;
     }
 
+    // ★追加: ターン終了時に保存スケジュール
+    scheduleSave();
+
     // 計画書の更新をチェック（Facilitatorのみ）
     let planUpdate = null;
     if (nextAgent === 'facilitator') {
@@ -670,6 +753,8 @@ router.post('/next-phase', async (req, res) => {
     session.actualStepTurns = 0;
     session.turnsSinceLastFacilitator = 0;
 
+    scheduleSave(); // ★追加: フェーズ変更時に保存スケジュール
+
     res.json({
       success: true,
       message: `Phase ${session.currentPhase} started`,
@@ -715,6 +800,8 @@ router.post('/step-extension-judgment', async (req, res) => {
       session.estimatedStepTurns = 0;
       session.actualStepTurns = 0;
 
+      scheduleSave(); // ★追加: ステップ完了時に保存スケジュール
+
       res.json({
         success: true,
         message: 'ステップを完了しました',
@@ -756,6 +843,8 @@ router.post('/extend-discussion', async (req, res) => {
 
     console.log(`🔄 Discussion extended! Added ${extensionDeck.length} more turns. Extension count: ${session.extensionCount}`);
 
+    scheduleSave(); // ★追加: 延長時に保存スケジュール
+
     res.json({
       success: true,
       message: `議論を延長しました（延長回数: ${session.extensionCount}）`,
@@ -769,7 +858,7 @@ router.post('/extend-discussion', async (req, res) => {
   }
 });
 
-// セッション情報取得
+// セッション情報取得（完全版 - フロントエンドでの状態復元用）
 router.get('/session/:sessionId', (req, res) => {
   const { sessionId } = req.params;
   const session = debateSessions.get(sessionId);
@@ -780,18 +869,34 @@ router.get('/session/:sessionId', (req, res) => {
 
   const currentPhase = NEW_PHASES[session.currentPhase - 1];
 
+  // 履歴をメッセージ形式に変換
+  const messages = session.history.map(h => ({
+    agent: h.agent,
+    content: h.content,
+    timestamp: new Date().toISOString(), // 履歴にタイムスタンプがないため現在時刻を使用
+    hasUserQuestion: false,
+    userQuestion: ''
+  }));
+
   res.json({
     success: true,
     session: {
       sessionId: session.sessionId,
       theme: session.theme,
+      mode: session.mode,
       outputMode: session.outputMode,
       currentPhase: session.currentPhase,
       currentPhaseName: currentPhase.nameJa,
+      currentStep: session.currentStep,
+      currentStepName: session.currentStepName,
       currentTurn: session.currentTurn,
       totalTurnsInPhase: currentPhase.totalTurns,
+      estimatedStepTurns: session.estimatedStepTurns,
+      actualStepTurns: session.actualStepTurns,
       remainingInDeck: session.speakerDeck.length,
       currentPlan: session.currentPlan,
+      currentMemo: session.currentMemo,
+      messages: messages,
       historyCount: session.history.length
     }
   });
