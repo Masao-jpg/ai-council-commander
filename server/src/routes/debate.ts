@@ -68,12 +68,12 @@ function detectStepStart(text: string): StepStartInfo | null {
 }
 
 function detectStepCompleted(text: string): { stepNumber: string; stepName: string } | null {
-  const regex = /---STEP_COMPLETED---\s*ステップ\s*([0-9\-]+)\s*[:：]\s*([^\n]+)\s*完了\s*---STEP_COMPLETED---/;
-  const match = text.match(regex);
-  if (match) {
+  // 厳格なチェックをやめ、単にタグが含まれているか確認する
+  if (text.includes('---STEP_COMPLETED---')) {
+    // 詳細は後続のロジックで session 情報から補完するため、ここでは仮の値を返す
     return {
-      stepNumber: match[1].trim(),
-      stepName: match[2].trim()
+      stepNumber: 'SESSION_CURRENT',
+      stepName: 'SESSION_CURRENT'
     };
   }
   return null;
@@ -377,11 +377,11 @@ router.post('/next-turn', async (req, res) => {
 
             if (session.stepExtended) {
               // 既に延長済みの場合は完了のみ
-              contextPrompt += `⚠️ このステップは既に延長されています。**必ず** ---STEP_COMPLETED--- を宣言してください。\n`;
-              contextPrompt += `（延長は1回までです。2回目の延長は禁止されています）\n\n`;
+              contextPrompt += `⚠️ このステップは既に延長されています。これ以上議論を続けず、直ちに完了させてください。\n`;
+              contextPrompt += `完了宣言: 文末に必ず \`---STEP_COMPLETED---\` とだけ出力してください。\n\n`;
             } else {
               // 初回の場合は延長可能
-              contextPrompt += `- 成果物が十分に定義できている → ---STEP_COMPLETED--- を宣言\n`;
+              contextPrompt += `- 成果物が十分に定義できている → 文末に \`---STEP_COMPLETED---\` を出力して完了\n`;
               contextPrompt += `- まだ不足がある → ---STEP_EXTENSION_NEEDED--- を宣言し、不足点と追加ターン数を提示\n\n`;
             }
           } else {
@@ -491,14 +491,18 @@ router.post('/next-turn', async (req, res) => {
         };
       }
 
-      // STEP_COMPLETED検出（PHASE_COMPLETEDと同じパターンで処理）
+      // STEP_COMPLETED検出
       const stepCompletedResult = detectStepCompleted(text);
       if (stepCompletedResult) {
-        console.log(`✅ STEP_COMPLETED detected: ${stepCompletedResult.stepNumber} - ${stepCompletedResult.stepName}`);
+        console.log(`✅ STEP_COMPLETED detected`);
 
-        // フラグを立てて、通常のレスポンスとして返す
         stepCompleted = true;
-        completedStepInfo = stepCompletedResult;
+
+        // ★修正点: タグから情報が取れない場合は、現在のセッション情報を使う
+        completedStepInfo = {
+          stepNumber: stepCompletedResult.stepNumber === 'SESSION_CURRENT' ? session.currentStep : stepCompletedResult.stepNumber,
+          stepName: stepCompletedResult.stepName === 'SESSION_CURRENT' ? session.currentStepName : stepCompletedResult.stepName
+        };
 
         // Reset step counters for next step
         session.currentStep = '';
