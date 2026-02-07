@@ -5,6 +5,7 @@ import * as path from 'path';
 import {
   AGENT_CONFIGS,
   NEW_PHASES,
+  FREE_MODE_PHASE,
   AgentRole,
   PhaseConfig,
   CouncilMode
@@ -136,6 +137,16 @@ function getArtifactName(phaseNumber: number): string {
     '成果物パッケージ (Deliverable Package)'   // Phase 5
   ];
   return artifacts[phaseNumber - 1] || '成果物';
+}
+
+// セッション情報から現在のフェーズ設定を取得するヘルパー関数
+function getPhaseConfig(session: DebateSession): PhaseConfig {
+  if (session.mode === 'free') {
+    return FREE_MODE_PHASE;
+  }
+  // 通常モードの場合は既存の配列から取得
+  const index = (session.currentPhase >= 1) ? session.currentPhase - 1 : 0;
+  return NEW_PHASES[index] || NEW_PHASES[0];
 }
 
 // Facilitator keyword detection functions
@@ -339,11 +350,16 @@ router.post('/restore', async (req, res) => {
       return res.status(400).json({ error: 'Theme is required for restoration' });
     }
 
-    // フェーズ情報の取得
-    const phaseIndex = (currentPhase && currentPhase >= 1 && currentPhase <= NEW_PHASES.length)
-      ? currentPhase - 1
-      : 0;
-    const phaseConfig = NEW_PHASES[phaseIndex];
+    // フェーズ情報の取得（モードに応じて分岐）
+    let phaseConfig: PhaseConfig;
+    if (mode === 'free') {
+      phaseConfig = FREE_MODE_PHASE;
+    } else {
+      const phaseIndex = (currentPhase && currentPhase >= 1 && currentPhase <= NEW_PHASES.length)
+        ? currentPhase - 1
+        : 0;
+      phaseConfig = NEW_PHASES[phaseIndex];
+    }
 
     // デッキの再生成（Facilitatorを先頭に）
     const speakerDeck = createSpeakerDeck(phaseConfig, true);
@@ -402,14 +418,26 @@ router.post('/start', async (req, res) => {
       return res.status(400).json({ error: 'Theme is required' });
     }
 
-    // 開始フェーズの決定（デフォルトは1）
-    const initialPhaseNumber = startPhase && startPhase >= 1 && startPhase <= NEW_PHASES.length
-      ? startPhase
-      : 1;
+    // モードによる分岐
+    let initialPhaseConfig: PhaseConfig;
+    let initialPhaseNumber = 1;
+    let totalPhasesCount = NEW_PHASES.length;
 
-    // 指定されたフェーズのデッキを生成（Facilitatorを最初に配置）
-    const initialPhase = NEW_PHASES[initialPhaseNumber - 1];
-    const speakerDeck = createSpeakerDeck(initialPhase, true);
+    if (mode === 'free') {
+      // フリーモードは特別なフェーズ1として扱う
+      initialPhaseConfig = FREE_MODE_PHASE;
+      initialPhaseNumber = 1;
+      totalPhasesCount = 1; // フリーモードは1フェーズ（実質フェーズなし）扱い
+    } else {
+      // 通常モード: 開始フェーズの決定（デフォルトは1）
+      initialPhaseNumber = startPhase && startPhase >= 1 && startPhase <= NEW_PHASES.length
+        ? startPhase
+        : 1;
+      initialPhaseConfig = NEW_PHASES[initialPhaseNumber - 1];
+    }
+
+    // デッキを生成（Facilitatorを最初に配置）
+    const speakerDeck = createSpeakerDeck(initialPhaseConfig, true);
 
     const session: DebateSession = {
       sessionId,
@@ -421,7 +449,7 @@ router.post('/start', async (req, res) => {
       speakerDeck,
       history: [],
       currentPlan: `# ${theme}\n\n議論を開始します...`,
-      currentMemo: `# 議事メモ\n\n## セッション開始\n- 議題: ${theme}\n- モード: ${mode || 'free'}\n- 開始フェーズ: Phase ${initialPhaseNumber} (${initialPhase.nameJa})\n`,
+      currentMemo: `# 議事メモ\n\n## セッション開始\n- 議題: ${theme}\n- モード: ${mode || 'free'}\n- 開始フェーズ: Phase ${initialPhaseNumber} (${initialPhaseConfig.nameJa})\n`,
       extensionCount: 0,
       currentStep: '',
       currentStepName: '',
@@ -441,8 +469,8 @@ router.post('/start', async (req, res) => {
       success: true,
       message: 'Debate session initialized',
       sessionId,
-      phase: initialPhase,
-      totalPhases: NEW_PHASES.length
+      phase: initialPhaseConfig,
+      totalPhases: totalPhasesCount
     });
   } catch (error: any) {
     console.error('Error starting debate:', error);
@@ -511,7 +539,7 @@ router.post('/next-turn', async (req, res) => {
 
     // AIに発言を生成させる
     const agentConfig = AGENT_CONFIGS[nextAgent];
-    const currentPhase = NEW_PHASES[session.currentPhase - 1];
+    const currentPhase = getPhaseConfig(session);
 
     console.log(`🤖 Calling Gemini API for ${nextAgent}...`);
 
@@ -823,7 +851,9 @@ router.post('/next-turn', async (req, res) => {
       remainingInDeck: session.speakerDeck.length,
       isCheckpoint,
       isPhaseComplete,
-      nextPhaseAvailable: session.currentPhase < NEW_PHASES.length,
+      nextPhaseAvailable: (session.mode === 'free')
+        ? false // フリーモードは次フェーズなし
+        : session.currentPhase < NEW_PHASES.length,
       currentStep: session.currentStep,
       currentStepName: session.currentStepName,
       estimatedStepTurns: session.estimatedStepTurns,
@@ -843,6 +873,15 @@ router.post('/next-phase', async (req, res) => {
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // フリーモードの場合はフェーズ進行不可（または完了扱い）
+    if (session.mode === 'free') {
+      return res.json({
+        success: true,
+        message: 'Free mode completed',
+        isComplete: true
+      });
     }
 
     if (session.currentPhase >= NEW_PHASES.length) {
@@ -939,7 +978,7 @@ router.post('/extend-discussion', async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    const currentPhase = NEW_PHASES[session.currentPhase - 1];
+    const currentPhase = getPhaseConfig(session);
 
     // 延長カウントを増やす
     session.extensionCount++;
@@ -982,7 +1021,7 @@ router.get('/session/:sessionId', (req, res) => {
     return res.status(404).json({ error: 'Session not found' });
   }
 
-  const currentPhase = NEW_PHASES[session.currentPhase - 1];
+  const currentPhase = getPhaseConfig(session);
 
   // 履歴をメッセージ形式に変換
   const messages = session.history.map(h => ({

@@ -163,19 +163,30 @@ function App() {
 
     const sessionId = `session_${Date.now()}`;
 
-    // Phase configurations
-    const phaseConfigs = [
-      { phase: 1, nameJa: '情報収集', totalTurns: 11 },
-      { phase: 2, nameJa: '発散', totalTurns: 11 },
-      { phase: 3, nameJa: '構造化', totalTurns: 11 },
-      { phase: 4, nameJa: '生成', totalTurns: 8 },
-      { phase: 5, nameJa: '洗練', totalTurns: 11 },
-    ];
+    // フリーモード用の初期設定
+    let initialPhase;
 
-    const initialPhase = phaseConfigs[startPhaseNumber - 1];
-
-    // 開始Phase番号を保存（UI表示に使用）
-    setStartPhase(startPhaseNumber);
+    if (mode === 'free') {
+      // フリーモードは特別なフェーズ1として扱う
+      initialPhase = {
+        phase: 1,
+        nameJa: 'フリーモード',
+        totalTurns: 100
+      };
+      setStartPhase(1);
+    } else {
+      // 通常モードの定義
+      const phaseConfigs = [
+        { phase: 1, nameJa: '情報収集', totalTurns: 11 },
+        { phase: 2, nameJa: '発散', totalTurns: 11 },
+        { phase: 3, nameJa: '構造化', totalTurns: 11 },
+        { phase: 4, nameJa: '生成', totalTurns: 8 },
+        { phase: 5, nameJa: '洗練', totalTurns: 11 },
+      ];
+      initialPhase = phaseConfigs[startPhaseNumber - 1];
+      // 開始Phase番号を保存（UI表示に使用）
+      setStartPhase(startPhaseNumber);
+    }
 
     setDebateState({
       sessionId,

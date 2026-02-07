@@ -460,6 +460,47 @@ C) その他（自由記入）
   }
 };
 
+// フリーモード用の特別構成（4ステップ・全エージェント参加）
+export const FREE_MODE_PHASE: PhaseConfig = {
+  phase: 1,
+  name: 'Free Mode',
+  nameJa: 'フリーモード',
+  purpose: 'ユーザー要望のヒアリングから成果物提供までを一気通貫で行う',
+  discussionStyle: '全エージェントによる総力戦（順繰り）',
+  totalTurns: 100, // ステップごとの自動補充があるため目安値
+  participants: [
+    'facilitator', // 指揮者
+    'futurePotentialSeeker',
+    'constraintChecker',
+    'logicalConsistencyChecker',
+    'userValueAdvocate',
+    'innovationCatalyst',
+    'constructiveCritic'
+  ],
+  steps: [
+    {
+      id: 'F-1',
+      name: '要望確認',
+      description: 'ユーザーへのヒアリングを行い、解決すべき課題とニーズを明確にする。'
+    },
+    {
+      id: 'F-2',
+      name: '構成定義',
+      description: '作成する成果物の「見出し」「項目」「フォーマット」を定義し、ユーザーの合意を得る。'
+    },
+    {
+      id: 'F-3',
+      name: '成果物作成',
+      description: '定義された構成に基づき、具体的な中身（本文、コード、データ等）を作成する。'
+    },
+    {
+      id: 'F-4',
+      name: '成果物提供',
+      description: '最終的な成果物を提示し、品質チェックを行い、ユーザーに提供する。'
+    }
+  ]
+};
+
 // 新しい5フェーズ構造（成果物定義を強化）
 export const NEW_PHASES: PhaseConfig[] = [
   {
