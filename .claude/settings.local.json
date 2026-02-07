@@ -26,7 +26,10 @@
       "WebSearch",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:github.com)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(for i in {1..5})",
+      "Bash(do echo -n \"Phase $i: \")",
+      "Bash(done)"
     ]
   }
 }
