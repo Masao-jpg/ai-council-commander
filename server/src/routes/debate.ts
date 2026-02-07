@@ -165,12 +165,12 @@ function detectStepStart(text: string): StepStartInfo | null {
   console.log('🔍 STEP_START tag detected. parsing details (lax mode)...');
 
   // 2. 情報を抽出してみる（失敗してもOK）
-  // "Step 1-1" や "ステップ 1-1"
-  const stepNumMatch = text.match(/(?:ステップ|Step)\s*([0-9]+-[0-9]+)/i);
+  // "Step 1-1" や "ステップ 1-1" や "Step F-1"（英字許可）
+  const stepNumMatch = text.match(/(?:ステップ|Step)\s*([a-zA-Z0-9]+-[0-9]+)/i);
   // "Estimate: 10" や "10 turns" や "見積もり: 10"
   const turnMatch = text.match(/(?:見積もり|Estimate|Turns?).*?(\d+)/i);
-  // コロンの後の名前
-  const nameMatch = text.match(/(?:ステップ|Step)\s*[0-9]+-[0-9]+\s*[:：]\s*([^\n]+)/i);
+  // コロンの後の名前（英数字許可）
+  const nameMatch = text.match(/(?:ステップ|Step)\s*[a-zA-Z0-9]+-[0-9]+\s*[:：]\s*([^\n]+)/i);
 
   return {
     // 見つかればその番号、なければ null (呼び出し元で session.currentStep を使う)
@@ -570,15 +570,13 @@ router.post('/next-turn', async (req, res) => {
         contextPrompt += `【指揮者専用情報】\n`;
 
         // 🔥 成果物定義の強制注入（Phase目的を忘れさせないための強制リマインダー）
-        const currentPhaseObj = NEW_PHASES.find(p => p.phase === session.currentPhase);
-        const currentStepObj = currentPhaseObj?.steps?.find(s => s.id === session.currentStep);
+        // モード判定済みの currentPhase を使用（Free Modeにも対応）
+        const currentStepObj = currentPhase.steps?.find(s => s.id === session.currentStep);
         const artifactName = getArtifactName(session.currentPhase);
 
         contextPrompt += `\n【現在地と目的の再確認（重要）】\n`;
-        if (currentPhaseObj) {
-          contextPrompt += `- **現在のフェーズ**: Phase ${session.currentPhase} 「${currentPhaseObj.nameJa}」\n`;
-          contextPrompt += `- **フェーズの目的**: ${currentPhaseObj.purpose}\n`;
-        }
+        contextPrompt += `- **現在のフェーズ**: Phase ${session.currentPhase} 「${currentPhase.nameJa}」\n`;
+        contextPrompt += `- **フェーズの目的**: ${currentPhase.purpose}\n`;
         if (currentStepObj) {
           contextPrompt += `- **現在のステップ**: ${session.currentStep} 「${currentStepObj.name}」\n`;
           contextPrompt += `- **ステップの実行内容**: ${currentStepObj.description}\n`;
