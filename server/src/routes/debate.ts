@@ -505,9 +505,9 @@ router.post('/next-turn', async (req, res) => {
         content: `【ユーザーの回答】\n質問: ${userResponse.question}\n回答: ${userResponse.answer}`
       });
 
-      // 延長承認の処理
+      // 延長承認の処理（回数制限なし - 何度でも延長可能）
       if (userResponse.question.includes('延長') && userResponse.answer.trim().toUpperCase() === 'A') {
-        if (session.proposedExtensionTurns > 0 && !session.stepExtended) {
+        if (session.proposedExtensionTurns > 0) {
           console.log(`✅ User approved extension: adding ${session.proposedExtensionTurns} turns to estimate`);
           session.estimatedStepTurns += session.proposedExtensionTurns;
           session.stepExtended = true;
@@ -599,24 +599,19 @@ router.post('/next-turn', async (req, res) => {
           contextPrompt += `見積もりターン数: ${session.estimatedStepTurns}ターン\n`;
           contextPrompt += `実際の経過ターン数: ${session.actualStepTurns}ターン（メンバーの議論ターン）\n`;
 
-          // 延長状態の表示
+          // 延長状態の表示（情報として表示するだけにする）
           if (session.stepExtended) {
-            contextPrompt += `延長状態: ✅ このステップは既に延長されています（延長は1回まで）\n`;
+            contextPrompt += `延長状態: 延長戦進行中（現在${session.actualStepTurns}ターン経過）\n`;
           }
 
           // 見積もりターン到達チェック
           if (session.actualStepTurns >= session.estimatedStepTurns) {
             contextPrompt += `\n🔔 **重要**: 見積もりターン数に到達しました。ステップ完了判定を行ってください。\n`;
 
-            if (session.stepExtended) {
-              // 既に延長済みの場合は完了のみ
-              contextPrompt += `⚠️ このステップは既に延長されています。これ以上議論を続けず、直ちに完了させてください。\n`;
-              contextPrompt += `完了宣言: 文末に必ず \`---STEP_COMPLETED---\` とだけ出力してください。\n\n`;
-            } else {
-              // 初回の場合は延長可能
-              contextPrompt += `- 成果物が十分に定義できている → 文末に \`---STEP_COMPLETED---\` を出力して完了\n`;
-              contextPrompt += `- まだ不足がある → ---STEP_EXTENSION_NEEDED--- を宣言し、不足点と追加ターン数を提示\n\n`;
-            }
+            // 回数制限なし - 何度でも延長可能
+            contextPrompt += `- 成果物が十分に定義できている → 文末に \`---STEP_COMPLETED---\` を出力して完了\n`;
+            contextPrompt += `- まだ不足がある → ---STEP_EXTENSION_NEEDED--- を宣言し、不足点と追加ターン数を提示（何度でも延長可能です）\n\n`;
+
           } else {
             const remaining = session.estimatedStepTurns - session.actualStepTurns;
             contextPrompt += `残りターン数: ${remaining}ターン\n\n`;
