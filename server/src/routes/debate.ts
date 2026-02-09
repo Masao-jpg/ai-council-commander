@@ -753,6 +753,14 @@ router.post('/next-turn', async (req, res) => {
           session.speakerDeck = createSpeakerDeck(getPhaseConfig(session), false);
         }
 
+        // ★無限ループ防止: 再生成されたデッキの先頭がFacilitatorの場合、削除
+        // Facilitatorが今まさにステップを開始宣言したところなので、
+        // 次のターンでまたFacilitatorが呼ばれないように先頭をスキップ
+        if (session.speakerDeck.length > 0 && session.speakerDeck[0] === 'facilitator') {
+          console.log('⏩ Skipping leading Facilitator in new deck (avoiding immediate self-loop)');
+          session.speakerDeck.shift();
+        }
+
         console.log(`🔄 Deck regenerated for Step ${stepNumber} (Mode: ${session.mode}). Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
 
         stepUpdate = {
