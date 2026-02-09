@@ -42,21 +42,6 @@ interface DebateSession {
 
 const debateSessions = new Map<string, DebateSession>();
 
-// 役割グループ定義：発散→検証→収束の順序を強制
-// Facilitator以外のAgentRoleのみを含む
-type NonFacilitatorRole = Exclude<AgentRole, 'facilitator'>;
-
-const ROLE_GROUPS: NonFacilitatorRole[][] = [
-  // Group 1: 発散・ビジョン（最初に話すべき）
-  ['innovationCatalyst', 'futurePotentialSeeker'],
-
-  // Group 2: 価値・論理（中盤で揉む）
-  ['userValueAdvocate', 'logicalConsistencyChecker'],
-
-  // Group 3: 収束・現実（最後に締める）
-  ['constructiveCritic', 'constraintChecker']
-];
-
 // --- 永続化機能（非同期・バッチ保存） ---
 const DATA_FILE = path.join(__dirname, '..', 'data', 'sessions.json');
 let saveScheduled = false;
@@ -299,79 +284,44 @@ Phase ${session.currentPhase}: ${phase.nameJa}
 }
 
 // デッキ生成関数（発言者リストを作成）
-// ティア制システム: 発散→検証→収束の順序を強制、Facilitatorは2ターンごとに介入
-function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = false, lastSpeaker?: AgentRole): AgentRole[] {
+// 新システム: Facilitatorは2ターンごとに強制介入、他は均等配置
+function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = false): AgentRole[] {
+  // Facilitator以外のメンバーを抽出
+  const nonFacilitators = phase.participants.filter(a => a !== 'facilitator');
 
-  // ★安全装置: 直前の発言者がFacilitatorだった場合、強制フラグを無効化する
-  if (lastSpeaker === 'facilitator') {
-    forceFacilitatorFirst = false;
-  }
+  // 通常メンバーのデッキを作成（Facilitatorは含めない）
+  // totalTurnsは目安として使用（実際はFacilitatorの見積もりで動的に決まる）
+  const turnsPerAgent = Math.floor(phase.totalTurns / phase.participants.length);
 
-  // 1. 今回の参加者をセット（Facilitator以外）
-  const participantsSet = new Set(phase.participants.filter(a => a !== 'facilitator'));
-  const orderedMembers: AgentRole[] = [];
-
-  // 2. 優先グループ順に参加者を抽出して追加
-  ROLE_GROUPS.forEach(group => {
-    // このグループに属する、今回の参加者を取得
-    const currentGroupMembers = group.filter(role => participantsSet.has(role));
-
-    // グループ内ではランダムにシャッフル（毎回同じ並び順にならないように）
-    for (let i = currentGroupMembers.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [currentGroupMembers[i], currentGroupMembers[j]] = [currentGroupMembers[j], currentGroupMembers[i]];
+  const memberDeck: AgentRole[] = [];
+  nonFacilitators.forEach((agent) => {
+    for (let i = 0; i < turnsPerAgent; i++) {
+      memberDeck.push(agent);
     }
-
-    // 順序リストに追加し、セットから削除
-    currentGroupMembers.forEach(role => {
-      orderedMembers.push(role);
-      participantsSet.delete(role);
-    });
   });
 
-  // 3. グループ定義漏れのメンバーがいれば末尾にランダム追加（保険）
-  const remainingMembers = Array.from(participantsSet);
-  for (let i = remainingMembers.length - 1; i > 0; i--) {
+  // シャッフル
+  for (let i = memberDeck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [remainingMembers[i], remainingMembers[j]] = [remainingMembers[j], remainingMembers[i]];
+    [memberDeck[i], memberDeck[j]] = [memberDeck[j], memberDeck[i]];
   }
-  orderedMembers.push(...(remainingMembers as AgentRole[]));
 
-  // 4. Facilitatorを定期的に挟み込んで最終デッキを作成
+  // Facilitatorを2ターンごとに挿入
   const finalDeck: AgentRole[] = [];
 
+  // 最初はFacilitator（ステップ開始宣言のため）
   if (forceFacilitatorFirst) {
     finalDeck.push('facilitator');
   }
 
-  let facilitatorCounter = 0;
-  for (let i = 0; i < orderedMembers.length; i++) {
-    finalDeck.push(orderedMembers[i]);
-    facilitatorCounter++;
+  // 通常メンバーを2人ずつ配置し、その後にFacilitatorを挿入
+  for (let i = 0; i < memberDeck.length; i++) {
+    finalDeck.push(memberDeck[i]);
 
-    // 2人話したらFacilitator（ただし、最後尾でFacilitatorで終わるのは極力避ける）
-    if (facilitatorCounter >= 2 && i < orderedMembers.length - 1) {
-      finalDeck.push('facilitator');
-      facilitatorCounter = 0;
-    }
-  }
-
-  // ★安全装置2: 万が一デッキが空、またはFacilitatorしかいない場合の保険
-  if (finalDeck.length === 0) {
-    // 参加者がいればその人を、いなければFacilitator
-    if (orderedMembers.length > 0) {
-      finalDeck.push(orderedMembers[0]);
-    } else {
+    // 2ターンごとにFacilitatorを挿入（ただし最後のターンの後は除く）
+    if ((i + 1) % 2 === 0 && i < memberDeck.length - 1) {
       finalDeck.push('facilitator');
     }
-  }
-
-  // ★安全装置3: 直前がFacilitatorなのに、生成された先頭もFacilitatorなら順序を入れ替える
-  if (lastSpeaker === 'facilitator' && finalDeck[0] === 'facilitator' && finalDeck.length > 1) {
-    // 2番目の人と入れ替え
-    const temp = finalDeck[1];
-    finalDeck[1] = finalDeck[0];
-    finalDeck[0] = temp;
   }
 
   return finalDeck;
@@ -568,22 +518,12 @@ router.post('/next-turn', async (req, res) => {
 
     // デッキから次の発言者を取得
     if (session.speakerDeck.length === 0) {
-      console.log(`⚠️ Speaker deck empty, regenerating deck...`);
+      console.log(`⚠️ Speaker deck empty, but phase continues until Facilitator declares PHASE_COMPLETED`);
 
-      // 直前の履歴から最後の発言者を取得
-      const lastHistoryItem = session.history.length > 0 ? session.history[session.history.length - 1] : null;
-      const lastSpeaker = lastHistoryItem ? lastHistoryItem.agent : undefined;
-
-      // ★ 無限ループ防止: 直前がFacilitatorなら、デッキを再生成（Facilitator連続を防ぐ）
-      if (lastSpeaker === 'facilitator') {
-        const currentPhaseConfig = getPhaseConfig(session);
-        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false, lastSpeaker);
-        console.log(`🔄 Deck regenerated to prevent Facilitator loop. Next speaker: ${session.speakerDeck[0] || 'none'}`);
-      } else {
-        // 直前がFacilitatorでない場合は、通常通りFacilitatorを追加してフェーズ管理を促す
-        session.speakerDeck.push('facilitator');
-        console.log(`✅ Added Facilitator to deck to continue phase management`);
-      }
+      // デッキが空になっても、Facilitatorが正式にPHASE_COMPLETEDを宣言するまでフェーズは続行
+      // Facilitatorを追加して、次のステップ開始またはフェーズ完了を促す
+      session.speakerDeck.push('facilitator');
+      console.log(`✅ Added Facilitator to deck to continue phase management`);
     }
 
     const nextAgent = session.speakerDeck.shift()!;
@@ -782,8 +722,7 @@ router.post('/next-turn', async (req, res) => {
         // Facilitatorは今喋ったばかりなので、次はメンバーから始める
         // モード判定済みのヘルパー関数を使用（Free Modeにも対応）
         const currentPhaseConfig = getPhaseConfig(session);
-        // lastSpeakerに'facilitator'を渡して、Facilitatorが連続しないようにする
-        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false, 'facilitator');
+        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
         console.log(`🔄 Deck regenerated for Step ${stepNumber} (Mode: ${session.mode}). Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
 
 
@@ -947,10 +886,7 @@ router.post('/next-phase', async (req, res) => {
     const nextPhase = NEW_PHASES[session.currentPhase - 1];
 
     // 新しいデッキを生成（Facilitatorを最初に配置）
-    // フェーズ遷移時は通常Facilitatorを先頭にするが、安全装置として直前の発言者を渡す
-    const lastHistoryItem = session.history.length > 0 ? session.history[session.history.length - 1] : null;
-    const lastSpeaker = lastHistoryItem ? lastHistoryItem.agent : undefined;
-    session.speakerDeck = createSpeakerDeck(nextPhase, true, lastSpeaker);
+    session.speakerDeck = createSpeakerDeck(nextPhase, true); // 常にFacilitatorを先頭に
     session.currentTurn = 0;
 
     // ステップ情報をリセット（新しいフェーズの最初のステップはFacilitatorが宣言）
