@@ -300,7 +300,13 @@ Phase ${session.currentPhase}: ${phase.nameJa}
 
 // デッキ生成関数（発言者リストを作成）
 // ティア制システム: 発散→検証→収束の順序を強制、Facilitatorは2ターンごとに介入
-function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = false): AgentRole[] {
+function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = false, lastSpeaker?: AgentRole): AgentRole[] {
+
+  // ★安全装置: 直前の発言者がFacilitatorだった場合、強制フラグを無効化する
+  if (lastSpeaker === 'facilitator') {
+    forceFacilitatorFirst = false;
+  }
+
   // 1. 今回の参加者をセット（Facilitator以外）
   const participantsSet = new Set(phase.participants.filter(a => a !== 'facilitator'));
   const orderedMembers: AgentRole[] = [];
@@ -348,6 +354,24 @@ function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = 
       finalDeck.push('facilitator');
       facilitatorCounter = 0;
     }
+  }
+
+  // ★安全装置2: 万が一デッキが空、またはFacilitatorしかいない場合の保険
+  if (finalDeck.length === 0) {
+    // 参加者がいればその人を、いなければFacilitator
+    if (orderedMembers.length > 0) {
+      finalDeck.push(orderedMembers[0]);
+    } else {
+      finalDeck.push('facilitator');
+    }
+  }
+
+  // ★安全装置3: 直前がFacilitatorなのに、生成された先頭もFacilitatorなら順序を入れ替える
+  if (lastSpeaker === 'facilitator' && finalDeck[0] === 'facilitator' && finalDeck.length > 1) {
+    // 2番目の人と入れ替え
+    const temp = finalDeck[1];
+    finalDeck[1] = finalDeck[0];
+    finalDeck[0] = temp;
   }
 
   return finalDeck;
@@ -544,12 +568,22 @@ router.post('/next-turn', async (req, res) => {
 
     // デッキから次の発言者を取得
     if (session.speakerDeck.length === 0) {
-      console.log(`⚠️ Speaker deck empty, but phase continues until Facilitator declares PHASE_COMPLETED`);
+      console.log(`⚠️ Speaker deck empty, regenerating deck...`);
 
-      // デッキが空になっても、Facilitatorが正式にPHASE_COMPLETEDを宣言するまでフェーズは続行
-      // Facilitatorを追加して、次のステップ開始またはフェーズ完了を促す
-      session.speakerDeck.push('facilitator');
-      console.log(`✅ Added Facilitator to deck to continue phase management`);
+      // 直前の履歴から最後の発言者を取得
+      const lastHistoryItem = session.history.length > 0 ? session.history[session.history.length - 1] : null;
+      const lastSpeaker = lastHistoryItem ? lastHistoryItem.agent : undefined;
+
+      // ★ 無限ループ防止: 直前がFacilitatorなら、デッキを再生成（Facilitator連続を防ぐ）
+      if (lastSpeaker === 'facilitator') {
+        const currentPhaseConfig = getPhaseConfig(session);
+        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false, lastSpeaker);
+        console.log(`🔄 Deck regenerated to prevent Facilitator loop. Next speaker: ${session.speakerDeck[0] || 'none'}`);
+      } else {
+        // 直前がFacilitatorでない場合は、通常通りFacilitatorを追加してフェーズ管理を促す
+        session.speakerDeck.push('facilitator');
+        console.log(`✅ Added Facilitator to deck to continue phase management`);
+      }
     }
 
     const nextAgent = session.speakerDeck.shift()!;
@@ -748,7 +782,8 @@ router.post('/next-turn', async (req, res) => {
         // Facilitatorは今喋ったばかりなので、次はメンバーから始める
         // モード判定済みのヘルパー関数を使用（Free Modeにも対応）
         const currentPhaseConfig = getPhaseConfig(session);
-        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
+        // lastSpeakerに'facilitator'を渡して、Facilitatorが連続しないようにする
+        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false, 'facilitator');
         console.log(`🔄 Deck regenerated for Step ${stepNumber} (Mode: ${session.mode}). Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
 
 
@@ -912,7 +947,10 @@ router.post('/next-phase', async (req, res) => {
     const nextPhase = NEW_PHASES[session.currentPhase - 1];
 
     // 新しいデッキを生成（Facilitatorを最初に配置）
-    session.speakerDeck = createSpeakerDeck(nextPhase, true); // 常にFacilitatorを先頭に
+    // フェーズ遷移時は通常Facilitatorを先頭にするが、安全装置として直前の発言者を渡す
+    const lastHistoryItem = session.history.length > 0 ? session.history[session.history.length - 1] : null;
+    const lastSpeaker = lastHistoryItem ? lastHistoryItem.agent : undefined;
+    session.speakerDeck = createSpeakerDeck(nextPhase, true, lastSpeaker);
     session.currentTurn = 0;
 
     // ステップ情報をリセット（新しいフェーズの最初のステップはFacilitatorが宣言）
