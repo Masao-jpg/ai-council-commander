@@ -525,12 +525,28 @@ router.post('/next-turn', async (req, res) => {
 
     // デッキから次の発言者を取得
     if (session.speakerDeck.length === 0) {
-      console.log(`⚠️ Speaker deck empty, but phase continues until Facilitator declares PHASE_COMPLETED`);
+      console.log(`⚠️ Speaker deck empty`);
 
-      // デッキが空になっても、Facilitatorが正式にPHASE_COMPLETEDを宣言するまでフェーズは続行
-      // Facilitatorを追加して、次のステップ開始またはフェーズ完了を促す
-      session.speakerDeck.push('facilitator');
-      console.log(`✅ Added Facilitator to deck to continue phase management`);
+      // ★無限ループ防止: ステップ進行中かつ未完了の場合は、デッキを再生成
+      if (session.currentStep && session.actualStepTurns < session.estimatedStepTurns) {
+        console.log(`📊 Step ${session.currentStep} incomplete (${session.actualStepTurns}/${session.estimatedStepTurns} turns)`);
+        console.log(`🔄 Regenerating deck to continue discussion...`);
+
+        // 固定キャストがあればそれを使用、なければ通常の参加者リスト
+        const fixedCast = STEP_CASTING[session.currentStep];
+        if (fixedCast) {
+          console.log(`📋 Using fixed cast for ${session.currentStep}: ${fixedCast.join(' -> ')}`);
+          session.speakerDeck = createSpeakerDeck(getPhaseConfig(session), false, fixedCast);
+        } else {
+          console.log(`🎲 Using default participants for ${session.currentStep}`);
+          session.speakerDeck = createSpeakerDeck(getPhaseConfig(session), false);
+        }
+        console.log(`✅ Deck regenerated. Next speakers: ${session.speakerDeck.slice(0, 3).join(' -> ')}...`);
+      } else {
+        // ステップ未開始、または完了済みの場合は、Facilitatorを追加してフェーズ管理を促す
+        console.log(`✅ No active step or step complete - adding Facilitator for phase management`);
+        session.speakerDeck.push('facilitator');
+      }
     }
 
     const nextAgent = session.speakerDeck.shift()!;
