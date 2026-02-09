@@ -399,16 +399,15 @@ C) その他（自由記入）
 
 【発言トリガー (When to speak)】
 以下の状況で積極的に発言してください：
-- 議論が「ありきたりな結論」や「前例踏襲」に落ち着きそうな時（予定調和の破壊）
-- 「前例がない」「業界の常識」という理由でアイデアが却下されそうな時
 - 議論が膠着し、誰も新しい切り口を出せない時
-- 議論参加者全員が同じ方向を向いており、別の視点が必要な時
+- 特定のフレームワークや観点に議論が集中している際に新しい観点を提供する
 
 【重要原則】
 - 「そもそも、この前提は正しいのか？」「なぜこの方法でなければならないのか？」といった根源的な問いを投げかけ、思考の前提を揺さぶる
 - 全く異なる分野の成功事例やアイデアを引用し、現在の議論と結びつけて新しい発想を促す
 - リスクを恐れず、常識外れに見える大胆な仮説やアイデアを積極的に提案する
 - 議論が行き詰まった際に、現状を打破するための全く異なる視点を提供する
+- 発散に終始せず、問題なく収束に向かっている場面ではしっかりと収束させる
 
 【ユーザーへの質問】
 革新的なアイデアの方向性を確認するためにユーザーに質問する必要がある場合は、必ず \`---USER_QUESTION---\` タグで囲み、選択肢形式（A, B, C）で質問してください。必ず「C) その他（自由記入）」を含めてください。ユーザーの回答が曖昧でも否定せず、理由を優しく聞き直してください。
@@ -515,7 +514,9 @@ export const NEW_PHASES: PhaseConfig[] = [
       'futurePotentialSeeker',
       'constraintChecker',
       'logicalConsistencyChecker',
-      'userValueAdvocate'
+      'userValueAdvocate',
+      'innovationCatalyst',
+      'constructiveCritic'
     ],
     steps: [
       { id: '1-0', name: '初期ヒアリング', description: '議論開始前の基本的な背景・目的の確認' },
@@ -532,13 +533,15 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '発散',
     purpose: '成果物「仮説シート」の作成。可能性の最大化と有望な選択肢の抽出（※決定は禁止）',
     discussionStyle: '批判禁止・結論禁止のブレインストーミング',
-    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 300,  // 全員参加に対応して増量
     participants: [
       'facilitator',
       'innovationCatalyst', // このフェーズの主役
       'futurePotentialSeeker',
       'userValueAdvocate',
-      'logicalConsistencyChecker'
+      'logicalConsistencyChecker',
+      'constraintChecker',
+      'constructiveCritic'
     ],
     steps: [
       {
@@ -564,13 +567,15 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '構造化',
     purpose: '成果物「骨子案」の作成。方針決定と詳細設計。',
     discussionStyle: '論理的な比較検討と意思決定',
-    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 300,  // 全員参加に対応して増量
     participants: [
       'facilitator',
       'logicalConsistencyChecker',
       'constraintChecker',
       'constructiveCritic',
-      'userValueAdvocate'
+      'userValueAdvocate',
+      'futurePotentialSeeker',
+      'innovationCatalyst'
     ],
     steps: [
       { id: '3-1', name: '評価基準', description: '仮説の中からどれを選択するか、具体的な判断軸（評価基準）を定める' },
@@ -584,13 +589,15 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '生成',
     purpose: '成果物「初稿」の作成。骨子に基づく実制作。',
     discussionStyle: 'クリエイティブな共同執筆',
-    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 300,  // 全員参加に対応して増量
     participants: [
       'facilitator',
       'userValueAdvocate',
       'innovationCatalyst',
       'futurePotentialSeeker',
-      'logicalConsistencyChecker'
+      'logicalConsistencyChecker',
+      'constraintChecker',
+      'constructiveCritic'
     ],
     steps: [
       { id: '4-1', name: '骨格に基づく本文', description: '骨子案に沿って、一通りの文章やコンテンツを執筆・生成する' },
@@ -603,13 +610,15 @@ export const NEW_PHASES: PhaseConfig[] = [
     nameJa: '洗練',
     purpose: '成果物「成果物パッケージ」の作成。品質保証と納品準備。',
     discussionStyle: '厳格なレビューと修正',
-    totalTurns: 200,  // Speaker deck生成の目安値（実際の進行はステップ単位の見積もりで管理）
+    totalTurns: 300,  // 全員参加に対応して増量
     participants: [
       'facilitator',
       'constructiveCritic',
       'logicalConsistencyChecker',
       'userValueAdvocate',
-      'constraintChecker'
+      'constraintChecker',
+      'futurePotentialSeeker',
+      'innovationCatalyst'
     ],
     steps: [
       { id: '5-1', name: '検証ログ', description: '抜け漏れや矛盾がないかチェックリストを用いて確認し、修正履歴を記録する' },
