@@ -43,7 +43,10 @@ interface DebateSession {
 const debateSessions = new Map<string, DebateSession>();
 
 // 役割グループ定義：発散→検証→収束の順序を強制
-const ROLE_GROUPS = [
+// Facilitator以外のAgentRoleのみを含む
+type NonFacilitatorRole = Exclude<AgentRole, 'facilitator'>;
+
+const ROLE_GROUPS: NonFacilitatorRole[][] = [
   // Group 1: 発散・ビジョン（最初に話すべき）
   ['innovationCatalyst', 'futurePotentialSeeker'],
 
@@ -305,7 +308,7 @@ function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = 
   // 2. 優先グループ順に参加者を抽出して追加
   ROLE_GROUPS.forEach(group => {
     // このグループに属する、今回の参加者を取得
-    const currentGroupMembers = group.filter(role => participantsSet.has(role as AgentRole));
+    const currentGroupMembers = group.filter(role => participantsSet.has(role));
 
     // グループ内ではランダムにシャッフル（毎回同じ並び順にならないように）
     for (let i = currentGroupMembers.length - 1; i > 0; i--) {
@@ -315,8 +318,8 @@ function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = 
 
     // 順序リストに追加し、セットから削除
     currentGroupMembers.forEach(role => {
-      orderedMembers.push(role as AgentRole);
-      participantsSet.delete(role as AgentRole);
+      orderedMembers.push(role);
+      participantsSet.delete(role);
     });
   });
 
