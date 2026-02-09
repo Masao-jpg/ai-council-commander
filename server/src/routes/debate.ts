@@ -720,15 +720,11 @@ router.post('/next-turn', async (req, res) => {
 
         // 🔥 ステップ開始時にデッキを補充（無限ループ防止）
         // Facilitatorは今喋ったばかりなので、次はメンバーから始める
-        const currentPhaseConfig = NEW_PHASES.find(p => p.phase === session.currentPhase);
-        if (currentPhaseConfig) {
-          session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
-          console.log(`🔄 Deck regenerated for Step ${stepNumber}. Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
-        } else {
-          // 安全策: フェーズ設定が見つからない場合はFacilitatorを入れる
-          session.speakerDeck = ['facilitator'];
-          console.warn('⚠️ Phase config not found, fallback to facilitator');
-        }
+        // モード判定済みのヘルパー関数を使用（Free Modeにも対応）
+        const currentPhaseConfig = getPhaseConfig(session);
+        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
+        console.log(`🔄 Deck regenerated for Step ${stepNumber} (Mode: ${session.mode}). Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
+
 
         stepUpdate = {
           type: 'start',
