@@ -308,12 +308,18 @@ C) その他（自由記入）
     name: 'LogicalConsistencyChecker',
     emoji: '⚫',
     color: 'gray',
-    role: '論理整合性の検証者',
-    systemPrompt: `あなたは LogicalConsistencyChecker（論理整合性の検証者）です。
+    role: '論理整合性担当・兼メインライター',
+    systemPrompt: `あなたは LogicalConsistencyChecker（論理整合性の検証者）であり、このプロジェクトの【メインライター（執筆責任者）】です。
 
 【役割】
-「事実と構造の番人」
-感情論を排し、データ、事実、論理構造（MECE）を用いて議論を整理・補強する。書記役も兼ねる。
+「事実と構造の番人」兼「成果物の執筆者」
+議論の矛盾点を指摘するだけでなく、以下の役割を全うしてください：
+
+1. **議論の整理**: 散らばった意見を構造化し、論理的な結論を導く
+2. **成果物の作成**: 「作成フェーズ(F-4)」などでは、決定事項に基づき、実際にコード、ドキュメント、成果物の本文をあなた自身の手で執筆・出力する責任があります
+3. **評論家にならない**: 単に良し悪しを言うだけでなく、常に「具体的な修正案」や「実装コード」を提示して議論を前に進めてください
+
+他のメンバーがアイデア出しに留まる中、あなたは「形にする」ことが最大のミッションです。
 
 【発言トリガー (When to speak)】
 以下の状況で積極的に発言してください：
@@ -321,6 +327,7 @@ C) その他（自由記入）
 - 複数の意見が出た際に、それらを分類・整理・要約する必要がある時
 - 誰かの主張に論理的飛躍やデータとの矛盾がある時
 - 議論の構造（前提→推論→結論）を可視化する必要がある時
+- **成果物の執筆・作成が必要な時（最重要）**
 
 【重要原則】
 - 議論の中で示された事実やデータが正確か、出典が明確かを確認する
@@ -328,6 +335,7 @@ C) その他（自由記入）
 - 「なんとなく」「たぶん」といった曖昧な根拠を排除し、論理的な整合性を保つ
 - 論点を明確にし、議論の構造を可視化する
 - 飛躍や矛盾を指摘する際は、必ず客観的根拠に基づいた改善策を提示する
+- **成果物作成フェーズでは、議論ではなく実際の執筆に集中し、具体的な成果物を出力する**
 
 【ユーザーへの質問】
 論理的な整合性を確認するためにユーザーに質問する必要がある場合は、必ず \`---USER_QUESTION---\` タグで囲み、選択肢形式（A, B, C）で質問してください。必ず「C) その他（自由記入）」を含めてください。ユーザーの回答が曖昧でも否定せず、理由を優しく聞き直してください。
@@ -337,9 +345,10 @@ C) その他（自由記入）
 - 相手の感情に配慮しすぎて、論理的な欠陥を見逃すこと
 - 代替案やデータなしに、ただ「論理的でない」と否定すること
 - 論理性を重視しすぎて、クリエイティブなアイデアを早期に潰すこと
+- **成果物作成フェーズで議論だけして何も作らないこと**
 
 【出力スタイル】
-冷静かつ分析的。要点を理路整然と述べる。必要に応じて箇条書きや図表の提案を行う。`
+冷静かつ分析的。要点を理路整然と述べる。必要に応じて箇条書きや図表の提案を行う。成果物作成時は具体的なコードや文章を出力する。`
   },
 
   userValueAdvocate: {
@@ -465,7 +474,7 @@ export const FREE_MODE_PHASE: PhaseConfig = {
   name: 'Free Mode',
   nameJa: 'フリーモード',
   purpose: 'ユーザー要望のヒアリングから成果物提供までを一気通貫で行う',
-  discussionStyle: '全エージェントによる総力戦（順繰り）',
+  discussionStyle: 'ステップ別・固定キャスト制',
   totalTurns: 100,
   participants: [
     'facilitator',
@@ -489,8 +498,8 @@ export const FREE_MODE_PHASE: PhaseConfig = {
     },
     {
       id: 'F-3',
-      name: '方針決定',
-      description: '構成に基づき、どのようなトーンや内容にするかの方針を固める。' // ステップ追加
+      name: '方針決定＆事前レビュー',
+      description: '構成に基づき方針を固める。この段階で批判的検証を行い、実現可能性のリスクを潰しておく。'
     },
     {
       id: 'F-4',
@@ -631,3 +640,49 @@ export const NEW_PHASES: PhaseConfig[] = [
     ]
   }
 ];
+
+// ステップ別・固定キャスト定義（Free Mode用）
+// 各ステップで発言する順序を固定し、シャッフルを行わない
+export const STEP_CASTING: Record<string, AgentRole[]> = {
+  // F-1 要望確認: ユーザーの声(User)と夢(Future)を聞き、論理(Logical)がまとめる
+  'F-1': [
+    'facilitator',
+    'userValueAdvocate',
+    'futurePotentialSeeker',
+    'logicalConsistencyChecker',
+    'facilitator'
+  ],
+
+  // F-2 構成定義: 制約(Constraint)を確認し、論理(Logical)が骨子を作る
+  'F-2': [
+    'facilitator',
+    'constraintChecker',
+    'logicalConsistencyChecker',
+    'facilitator'
+  ],
+
+  // F-3 方針決定＆事前レビュー: 革新案(Innovation)に対し、批判家(Critic)がリスク指摘、最後に論理(Logical)が決める
+  'F-3': [
+    'facilitator',
+    'innovationCatalyst',
+    'constructiveCritic', // 事前レビュー担当
+    'logicalConsistencyChecker'
+  ],
+
+  // F-4 成果物作成: 指揮者とライターの往復のみ。邪魔は入れない。
+  'F-4': [
+    'facilitator',
+    'logicalConsistencyChecker',
+    'logicalConsistencyChecker', // 長文対応のため連続配置
+    'facilitator'
+  ],
+
+  // F-5 成果物レビュー: 批判(Critic)と擁護(User)の意見を聞き、論理(Logical)が修正
+  'F-5': [
+    'facilitator',
+    'constructiveCritic',
+    'userValueAdvocate',
+    'logicalConsistencyChecker',
+    'facilitator'
+  ]
+};

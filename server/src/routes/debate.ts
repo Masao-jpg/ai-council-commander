@@ -6,6 +6,7 @@ import {
   AGENT_CONFIGS,
   NEW_PHASES,
   FREE_MODE_PHASE,
+  STEP_CASTING,
   AgentRole,
   PhaseConfig,
   CouncilMode
@@ -708,18 +709,21 @@ router.post('/next-turn', async (req, res) => {
 
     if (nextAgent === 'facilitator') {
       // STEP_START検出
-// STEP_START検出
       const stepStart = detectStepStart(text);
       if (stepStart) {
-        // ... (既存の変数セット処理) ...
         const stepNumber = stepStart.stepNumber || session.currentStep || '1-1';
-        
-        console.log(`Phase/Step Changed: ${session.currentStep} -> ${stepNumber}`);
+        const stepName = stepStart.stepName || session.currentStepName || 'ステップ開始';
 
-        // ------------------------------------------
-        // ★★★ ここから修正・追加 ★★★
-        // ------------------------------------------
+        console.log(`🎯 STEP_START confirmed: ${stepNumber} - ${stepName} (${stepStart.estimatedTurns} turns)`);
 
+        session.currentStep = stepNumber;
+        session.currentStepName = stepName;
+        session.estimatedStepTurns = stepStart.estimatedTurns;
+        session.actualStepTurns = 0;
+        session.stepExtended = false;
+        session.proposedExtensionTurns = 0;
+
+        // ★★★ 固定キャスト制の適用 ★★★
         // 定義ファイルから、そのステップ用の固定キャストを取得
         const fixedCast = STEP_CASTING[stepNumber];
 
@@ -730,11 +734,16 @@ router.post('/next-turn', async (req, res) => {
         } else {
           // 定義がないステップ（あるいは旧モード）の場合は従来通り
           console.log(`🎲 No fixed cast for ${stepNumber}, using default participants.`);
-          session.speakerDeck = createSpeakerDeck(getPhaseConfig(session));
+          session.speakerDeck = createSpeakerDeck(getPhaseConfig(session), false);
         }
 
+        console.log(`🔄 Deck regenerated for Step ${stepNumber} (Mode: ${session.mode}). Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
+
         stepUpdate = {
-          // ...
+          type: 'start',
+          step: stepNumber,
+          stepName: stepName,
+          estimatedTurns: stepStart.estimatedTurns
         };
       }
 
