@@ -290,53 +290,45 @@ Phase ${session.currentPhase}: ${phase.nameJa}
 function createSpeakerDeck(
   phase: PhaseConfig, 
   forceFacilitatorFirst: boolean = false,
-  customParticipants: AgentRole[] | null = null // ★追加
+  customParticipants: AgentRole[] | null = null // ★引数追加
 ): AgentRole[] {
-  
-  // ★追加: カスタム参加者が指定されている場合はそれを使う
-  // 指定がない場合は phase.participants を使う
-  const targetParticipants = customParticipants || phase.participants;
 
-  // Facilitator以外のメンバーを抽出
-  const nonFacilitators = targetParticipants.filter(a => a !== 'facilitator');
-
-  // --- 以下は元のロジックのままですが、phase.participants ではなく targetParticipants の数などを考慮 ---
-  
-  // 参加人数が極端に少ない（1人など）場合のターン数調整
-  const loopCount = customParticipants ? 4 : 1; // カスタム指名時は少し多めに回す
-
-  const turnsPerAgent = Math.floor((phase.totalTurns / phase.participants.length) * loopCount);
-
-  const memberDeck: AgentRole[] = [];
-  nonFacilitators.forEach((agent) => {
-    // 少なくとも1回は話すように、turnsPerAgentが0でも1にする
-    const counts = turnsPerAgent > 0 ? turnsPerAgent : 1; 
-    for (let i = 0; i < counts; i++) {
-      memberDeck.push(agent);
-    }
-  });
-  
-  // ... (シャッフルとFacilitator挿入ロジックは既存のまま) ...
-  
-  // シャッフル
-  for (let i = memberDeck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [memberDeck[i], memberDeck[j]] = [memberDeck[j], memberDeck[i]];
+  // A. カスタムキャスト（固定順リスト）が指定されている場合
+  if (customParticipants && customParticipants.length > 0) {
+    // シャッフルせずにそのまま返す（リストの並び順＝発言順）
+    // ループ回数を稼ぐためにリストを2周分結合して返すと、すぐにデッキ切れにならず便利です
+    return [...customParticipants, ...customParticipants];
   }
 
-  const finalDeck: AgentRole[] = [];
+  // B. 通常モード（Fモード以外など）の場合
+  // ここでも「基本シャッフルなし」の方針を適用します
+  
+  const targetParticipants = phase.participants.filter(a => a !== 'facilitator');
+  const memberDeck: AgentRole[] = [];
+  
+  // 全員を順番に追加
+  targetParticipants.forEach(p => memberDeck.push(p));
 
+  // ★シャッフル処理（Fisher-Yates）は削除またはコメントアウト
+  /* for (let i = memberDeck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [memberDeck[i], memberDeck[j]] = [memberDeck[j], memberDeck[i]];
+  }
+  */
+
+  // Facilitatorを挟み込む（既存ロジック維持）
+  const finalDeck: AgentRole[] = [];
   if (forceFacilitatorFirst) {
     finalDeck.push('facilitator');
   }
-
-  for (let i = 0; i < memberDeck.length; i++) {
-    finalDeck.push(memberDeck[i]);
-    // 2ターンごとにFacilitatorを挿入（人数が少ない場合は頻度を調整してもよいが、一旦既存通り）
-    if ((i + 1) % 2 === 0 && i < memberDeck.length - 1) {
+  
+  memberDeck.forEach((agent, index) => {
+    finalDeck.push(agent);
+    // 2人に1回指揮者を挟む（必要に応じて調整）
+    if ((index + 1) % 2 === 0) {
       finalDeck.push('facilitator');
     }
-  }
+  });
 
   return finalDeck;
 }
@@ -721,39 +713,25 @@ router.post('/next-turn', async (req, res) => {
       if (stepStart) {
         // ... (既存の変数セット処理) ...
         const stepNumber = stepStart.stepNumber || session.currentStep || '1-1';
-        // ...
-
-        // 🔥 ステップ開始時にデッキを補充（無限ループ防止）
         
+        console.log(`Phase/Step Changed: ${session.currentStep} -> ${stepNumber}`);
+
+        // ------------------------------------------
         // ★★★ ここから修正・追加 ★★★
-        
-        let customParticipants: AgentRole[] | null = null;
+        // ------------------------------------------
 
-        // ステップごとの特別キャスト配役（Special Casting）
-        if (stepNumber === 'F-4') {
-          // F-4 成果物作成: ライター（LogicalConsistencyChecker）と指揮者のみにする
-          // これにより、指揮者が指名すれば確実にライターが反応する
-          console.log('⚡ Special Casting: F-4 (Creation Mode) -> Only Writer & Facilitator');
-          customParticipants = ['logicalConsistencyChecker', 'facilitator'];
-        } 
-        else if (stepNumber === 'F-5') {
-           // F-5 レビュー: 批評家とユーザー視点を中心にする
-           console.log('⚡ Special Casting: F-5 (Review Mode) -> Critics & Advocates');
-           customParticipants = [
-             'constructiveCritic', 
-             'userValueAdvocate', 
-             'constraintChecker', 
-             'facilitator'
-           ];
+        // 定義ファイルから、そのステップ用の固定キャストを取得
+        const fixedCast = STEP_CASTING[stepNumber];
+
+        if (fixedCast) {
+          console.log(`📋 Applying Fixed Cast for ${stepNumber}: ${fixedCast.join(' -> ')}`);
+          // 固定キャストでデッキを再生成（シャッフルなし）
+          session.speakerDeck = createSpeakerDeck(getPhaseConfig(session), false, fixedCast);
+        } else {
+          // 定義がないステップ（あるいは旧モード）の場合は従来通り
+          console.log(`🎲 No fixed cast for ${stepNumber}, using default participants.`);
+          session.speakerDeck = createSpeakerDeck(getPhaseConfig(session));
         }
-
-        const currentPhaseConfig = getPhaseConfig(session);
-        // 第3引数に customParticipants を渡す
-        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false, customParticipants);
-        
-        console.log(`🔄 Deck regenerated for Step ${stepNumber}. Participants: ${customParticipants ? customParticipants.join(',') : 'ALL'}`);
-
-        // ★★★ 修正ここまで ★★★
 
         stepUpdate = {
           // ...
