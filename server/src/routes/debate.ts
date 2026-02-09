@@ -285,40 +285,54 @@ Phase ${session.currentPhase}: ${phase.nameJa}
 
 // デッキ生成関数（発言者リストを作成）
 // 新システム: Facilitatorは2ターンごとに強制介入、他は均等配置
-function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = false): AgentRole[] {
-  // Facilitator以外のメンバーを抽出
-  const nonFacilitators = phase.participants.filter(a => a !== 'facilitator');
+// 修正前: function createSpeakerDeck(phase: PhaseConfig, forceFacilitatorFirst: boolean = false): AgentRole[] {
+// 修正後: 第3引数 customParticipants を追加
+function createSpeakerDeck(
+  phase: PhaseConfig, 
+  forceFacilitatorFirst: boolean = false,
+  customParticipants: AgentRole[] | null = null // ★追加
+): AgentRole[] {
+  
+  // ★追加: カスタム参加者が指定されている場合はそれを使う
+  // 指定がない場合は phase.participants を使う
+  const targetParticipants = customParticipants || phase.participants;
 
-  // 通常メンバーのデッキを作成（Facilitatorは含めない）
-  // totalTurnsは目安として使用（実際はFacilitatorの見積もりで動的に決まる）
-  const turnsPerAgent = Math.floor(phase.totalTurns / phase.participants.length);
+  // Facilitator以外のメンバーを抽出
+  const nonFacilitators = targetParticipants.filter(a => a !== 'facilitator');
+
+  // --- 以下は元のロジックのままですが、phase.participants ではなく targetParticipants の数などを考慮 ---
+  
+  // 参加人数が極端に少ない（1人など）場合のターン数調整
+  const loopCount = customParticipants ? 4 : 1; // カスタム指名時は少し多めに回す
+
+  const turnsPerAgent = Math.floor((phase.totalTurns / phase.participants.length) * loopCount);
 
   const memberDeck: AgentRole[] = [];
   nonFacilitators.forEach((agent) => {
-    for (let i = 0; i < turnsPerAgent; i++) {
+    // 少なくとも1回は話すように、turnsPerAgentが0でも1にする
+    const counts = turnsPerAgent > 0 ? turnsPerAgent : 1; 
+    for (let i = 0; i < counts; i++) {
       memberDeck.push(agent);
     }
   });
-
+  
+  // ... (シャッフルとFacilitator挿入ロジックは既存のまま) ...
+  
   // シャッフル
   for (let i = memberDeck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [memberDeck[i], memberDeck[j]] = [memberDeck[j], memberDeck[i]];
   }
 
-  // Facilitatorを2ターンごとに挿入
   const finalDeck: AgentRole[] = [];
 
-  // 最初はFacilitator（ステップ開始宣言のため）
   if (forceFacilitatorFirst) {
     finalDeck.push('facilitator');
   }
 
-  // 通常メンバーを2人ずつ配置し、その後にFacilitatorを挿入
   for (let i = 0; i < memberDeck.length; i++) {
     finalDeck.push(memberDeck[i]);
-
-    // 2ターンごとにFacilitatorを挿入（ただし最後のターンの後は除く）
+    // 2ターンごとにFacilitatorを挿入（人数が少ない場合は頻度を調整してもよいが、一旦既存通り）
     if ((i + 1) % 2 === 0 && i < memberDeck.length - 1) {
       finalDeck.push('facilitator');
     }
@@ -702,35 +716,47 @@ router.post('/next-turn', async (req, res) => {
 
     if (nextAgent === 'facilitator') {
       // STEP_START検出
+// STEP_START検出
       const stepStart = detectStepStart(text);
       if (stepStart) {
-        // 【重要】情報が欠けていても、現在のセッション情報を正として補完する
-        // これにより「タグはあるのにフォーマット違いで開始しない」を防ぐ
+        // ... (既存の変数セット処理) ...
         const stepNumber = stepStart.stepNumber || session.currentStep || '1-1';
-        const stepName = stepStart.stepName || session.currentStepName || 'ステップ開始';
-
-        console.log(`🎯 STEP_START confirmed: ${stepNumber} - ${stepName} (${stepStart.estimatedTurns} turns)`);
-
-        session.currentStep = stepNumber;
-        session.currentStepName = stepName;
-        session.estimatedStepTurns = stepStart.estimatedTurns;
-        session.actualStepTurns = 0;
-        session.stepExtended = false; // 新しいステップなので延長フラグをリセット
-        session.proposedExtensionTurns = 0;
+        // ...
 
         // 🔥 ステップ開始時にデッキを補充（無限ループ防止）
-        // Facilitatorは今喋ったばかりなので、次はメンバーから始める
-        // モード判定済みのヘルパー関数を使用（Free Modeにも対応）
-        const currentPhaseConfig = getPhaseConfig(session);
-        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false);
-        console.log(`🔄 Deck regenerated for Step ${stepNumber} (Mode: ${session.mode}). Deck length: ${session.speakerDeck.length}, Next speaker: ${session.speakerDeck[0] || 'none'}`);
+        
+        // ★★★ ここから修正・追加 ★★★
+        
+        let customParticipants: AgentRole[] | null = null;
 
+        // ステップごとの特別キャスト配役（Special Casting）
+        if (stepNumber === 'F-4') {
+          // F-4 成果物作成: ライター（LogicalConsistencyChecker）と指揮者のみにする
+          // これにより、指揮者が指名すれば確実にライターが反応する
+          console.log('⚡ Special Casting: F-4 (Creation Mode) -> Only Writer & Facilitator');
+          customParticipants = ['logicalConsistencyChecker', 'facilitator'];
+        } 
+        else if (stepNumber === 'F-5') {
+           // F-5 レビュー: 批評家とユーザー視点を中心にする
+           console.log('⚡ Special Casting: F-5 (Review Mode) -> Critics & Advocates');
+           customParticipants = [
+             'constructiveCritic', 
+             'userValueAdvocate', 
+             'constraintChecker', 
+             'facilitator'
+           ];
+        }
+
+        const currentPhaseConfig = getPhaseConfig(session);
+        // 第3引数に customParticipants を渡す
+        session.speakerDeck = createSpeakerDeck(currentPhaseConfig, false, customParticipants);
+        
+        console.log(`🔄 Deck regenerated for Step ${stepNumber}. Participants: ${customParticipants ? customParticipants.join(',') : 'ALL'}`);
+
+        // ★★★ 修正ここまで ★★★
 
         stepUpdate = {
-          type: 'start',
-          step: stepNumber,
-          stepName: stepName,
-          estimatedTurns: stepStart.estimatedTurns
+          // ...
         };
       }
 

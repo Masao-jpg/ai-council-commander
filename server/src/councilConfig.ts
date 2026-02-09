@@ -459,19 +459,19 @@ C) その他（自由記入）
   }
 };
 
-// フリーモード用の特別構成（4ステップ・全エージェント参加）
+// フリーモード用の特別構成（ステップを F-5 まで拡張し、役割を明確化）
 export const FREE_MODE_PHASE: PhaseConfig = {
   phase: 1,
   name: 'Free Mode',
   nameJa: 'フリーモード',
   purpose: 'ユーザー要望のヒアリングから成果物提供までを一気通貫で行う',
   discussionStyle: '全エージェントによる総力戦（順繰り）',
-  totalTurns: 100, // ステップごとの自動補充があるため目安値
+  totalTurns: 100,
   participants: [
-    'facilitator', // 指揮者
+    'facilitator',
+    'logicalConsistencyChecker', // メインライターとして配置
     'futurePotentialSeeker',
     'constraintChecker',
-    'logicalConsistencyChecker',
     'userValueAdvocate',
     'innovationCatalyst',
     'constructiveCritic'
@@ -489,13 +489,18 @@ export const FREE_MODE_PHASE: PhaseConfig = {
     },
     {
       id: 'F-3',
-      name: '成果物作成',
-      description: '定義された構成に基づき、具体的な中身（本文、コード、データ等）を作成する。'
+      name: '方針決定',
+      description: '構成に基づき、どのようなトーンや内容にするかの方針を固める。' // ステップ追加
     },
     {
       id: 'F-4',
-      name: '成果物提供',
-      description: '最終的な成果物を提示し、品質チェックを行い、ユーザーに提供する。'
+      name: '成果物作成',
+      description: '【単独作業】定義された構成に基づき、LogicalConsistencyCheckerが責任を持って成果物（コード・文章）を作成する。'
+    },
+    {
+      id: 'F-5',
+      name: '成果物レビュー',
+      description: '作成された成果物に対し、他のエージェントが修正点を指摘し、完成度を高める。'
     }
   ]
 };
